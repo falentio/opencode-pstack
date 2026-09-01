@@ -1,22 +1,40 @@
 {
   "name": "opencode-pstack",
   "version": "0.1.0",
-  "description": "An OpenCode plugin.",
+  "description": "OpenCode port of pstack, the rigorous agent workflow skills from Cursor.",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "skills",
+    "agents",
+    "docs",
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "check": "pnpm typecheck && pnpm build"
+    "test": "node --test 'test/*.test.ts'",
+    "check": "pnpm typecheck && pnpm build && pnpm test"
   },
+  "keywords": [
+    "pstack",
+    "poteto-mode",
+    "skills",
+    "workflow",
+    "agent-style",
+    "subagents"
+  ],
   "dependencies": {
     "@opencode-ai/plugin": "1.18.25"
   },
