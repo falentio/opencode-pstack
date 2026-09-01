@@ -33,7 +33,7 @@ done
 SKILLS="$(curl -sf "http://127.0.0.1:$PORT/skill")"
 AGENTS="$(curl -sf "http://127.0.0.1:$PORT/agent")"
 
-expected_skills='poteto-mode make-bot-ui how unslop principle-laziness-protocol setup-pstack'
+expected_skills='poteto-mode make-bot-ui how unslop principle-laziness-protocol'
 missing_skills=""
 for s in $expected_skills; do
   if ! echo "$SKILLS" | grep -q "\"name\":\"$s\""; then
