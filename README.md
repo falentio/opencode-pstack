@@ -38,8 +38,7 @@ Run the `poteto-mode` skill at the start of a task:
 ```
 
 `poteto-mode` reads your request, picks from a set of playbooks, and routes to
-the other skills as needed. Run [`/setup-pstack`](skills/setup-pstack/SKILL.md)
-once to choose which models the skills use per role.
+the other skills as needed. Subagents inherit the parent chat model by default. Name a model in a `Task` call when a particular subagent needs to differ.
 
 New here? The [pstack guide](docs/guide/README.md) walks you through a first
 real task, from setup and prompting through verification and overnight runs.

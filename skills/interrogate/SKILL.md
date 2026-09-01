@@ -33,7 +33,7 @@ Write one clear paragraph. Reviewers challenge whether the work achieves the int
 
 ## Step 3, Spawn Reviewers
 
-Launch all reviewers in a single message using the Task tool. Use the `interrogate reviewers` list from `~/.cursor/rules/pstack-models.mdc` when present, one reviewer per entry, extending or shrinking the Reviewer A/B/C/D labels below to the configured entry count; otherwise use the table defaults.
+Launch all reviewers in a single message using the Task tool. Reviewers inherit the parent chat model by default; omit `Task.model` unless a reviewer is meant to differ. Extend or shrink the Reviewer A/B/C/D labels below to match how many reviewers you spawn.
 
 | Subagent | Default model |
 |----------|---------------|
