@@ -36,8 +36,7 @@ Write one clear paragraph. Reviewers challenge whether the work achieves the int
 Launch all reviewers in a single message using the Task tool. Omit `Task.model` from every call so each reviewer inherits the parent chat model. Extend or shrink the Reviewer A/B/C/D labels below to match how many reviewers you spawn.
 
 For each reviewer:
-- `subagent_type`: `generalPurpose`
-- `readonly`: `true`
+- `subagent_type`: `general`
 
 Read `references/reviewer-prompt.md` and fill in the template with:
 1. The stated intent

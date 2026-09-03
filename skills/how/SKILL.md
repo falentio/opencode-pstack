@@ -44,9 +44,8 @@ The right decomposition depends on the question. Use your judgment. Narrow quest
 
 Spawn all explorers in a single message:
 
-- `subagent_type`: `generalPurpose`
+- `subagent_type`: `general`
 - Omit `Task.model` so the explorer inherits the parent chat model.
-- `readonly`: `true`
 
 Each explorer gets the same base prompt from `references/explorer-prompt.md` plus a specific exploration angle naming its slice. Each explorer should:
 - Start broad: Glob for relevant directories, Grep for key types/interfaces/class names
@@ -63,9 +62,8 @@ Then proceed to Step 3.
 
 Spawn a single Task subagent that explores and explains in one pass:
 
-- `subagent_type`: `generalPurpose`
+- `subagent_type`: `general`
 - Omit `Task.model` so the explainer inherits the parent chat model.
-- `readonly`: `true`
 
 The agent does its own exploration (Glob, Grep, Read) and writes the explanation directly. Read `references/explainer-prompt.md` for the communication style and output format. Same structure, just no explorer findings as input.
 
@@ -75,9 +73,8 @@ Proceed to Step 4.
 
 Once all explorers return, spawn a single Task subagent to synthesize their findings into one coherent explanation:
 
-- `subagent_type`: `generalPurpose`
+- `subagent_type`: `general`
 - Omit `Task.model` so the explainer inherits the parent chat model.
-- `readonly`: `true`
 
 The explainer gets all explorers' findings and writes the human-facing explanation (output format below). Read `references/explainer-prompt.md` for the full prompt template. The explainer reconciles overlapping findings, resolves contradictions, and weaves the slices into a unified picture.
 
@@ -112,8 +109,7 @@ Run the full explain flow above (Steps 1-4). You must understand the architectur
 After the explanation is complete, spawn the required number of independent architectural critics in a single message. Every critic inherits the parent chat model. Omit `Task.model` from each call.
 
 For each critic:
-- `subagent_type`: `generalPurpose`
-- `readonly`: `true`
+- `subagent_type`: `general`
 
 Read `references/critic-prompt.md` for the prompt template. Each critic gets:
 1. The explanation from Step 1 (so they don't re-explore)
