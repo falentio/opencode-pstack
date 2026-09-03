@@ -1,0 +1,69 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: npm install --global opencode-ai@1.18.26
+      - run: pnpm check
+      - run: bash scripts/verify.sh
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          expected_tag="v${version}"
+          if [ "$GITHUB_REF_NAME" != "$expected_tag" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match $expected_tag"
+            exit 1
+          fi
+      - run: pnpm verify:package
+        id: verify-package
+      - name: Skip published version
+        id: published
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          package="@falentio/opencode-pstack@${version}"
+          if result="$(npm view "$package" dist.integrity --json 2>&1)"; then
+            published_integrity="$(printf '%s' "$result" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => process.stdout.write(JSON.parse(input)));')"
+            if [ "$published_integrity" != "${{ steps.verify-package.outputs.integrity }}" ]; then
+              echo "Published version ${version} has a different integrity value."
+              exit 1
+            fi
+            echo "Version ${version} is already published with the verified artifact."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -q "E404" <<<"$result"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            printf '%s\n' "$result"
+            exit 1
+          fi
+      - name: Publish verified tarball
+        if: steps.published.outputs.exists != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "${{ steps.verify-package.outputs.tarball }}" --access public

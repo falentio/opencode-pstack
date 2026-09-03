@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PLUGIN_PATH="$ROOT"
+PLUGIN_PATH="${PLUGIN_PATH:-$ROOT}"
+PLUGIN_PATH="$(cd "$PLUGIN_PATH" && pwd)"
 SCRATCH="$(mktemp -d /tmp/oc-verify.XXXXXX)"
 PORT="${PORT:-43991}"
 LOG="$SCRATCH/serve.log"
@@ -25,13 +26,23 @@ cd "$SCRATCH"
 opencode serve --port "$PORT" >"$LOG" 2>&1 &
 echo $! > "$SCRATCH/serve.pid"
 
+ready=0
 for i in $(seq 1 30); do
-  if curl -sf "http://127.0.0.1:$PORT/agent" >/dev/null 2>&1; then break; fi
+  if curl -sf --max-time 2 "http://127.0.0.1:$PORT/agent" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
   sleep 1
 done
 
-SKILLS="$(curl -sf "http://127.0.0.1:$PORT/skill")"
-AGENTS="$(curl -sf "http://127.0.0.1:$PORT/agent")"
+if [ "$ready" != 1 ]; then
+  echo "OpenCode server did not become ready"
+  tail -5 "$LOG"
+  exit 1
+fi
+
+SKILLS="$(curl -sf --max-time 10 "http://127.0.0.1:$PORT/skill")"
+AGENTS="$(curl -sf --max-time 10 "http://127.0.0.1:$PORT/agent")"
 
 expected_skills='poteto-mode make-bot-ui how unslop principle-laziness-protocol'
 missing_skills=""
@@ -51,7 +62,7 @@ done
 
 installed_files_ok=1
 for s in $expected_skills; do
-  if [ ! -f "$ROOT/skills/$s/SKILL.md" ]; then installed_files_ok=0; fi
+  if [ ! -f "$PLUGIN_PATH/skills/$s/SKILL.md" ]; then installed_files_ok=0; fi
 done
 
 echo "--- results ---"

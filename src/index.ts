@@ -48,7 +48,7 @@ async function log(
 ) {
   await client.app.log({
     body: {
-      service: "opencode-pstack",
+      service: "@falentio/opencode-pstack",
       level,
       message,
       extra,

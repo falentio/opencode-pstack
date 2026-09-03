@@ -4,12 +4,12 @@ In this page you install the plugin and run your first task. There is no per-rol
 
 ## Install the plugin
 
-Add `opencode-pstack` to `opencode.json`:
+Add `@falentio/opencode-pstack` to `opencode.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-pstack"]
+  "plugin": ["@falentio/opencode-pstack"]
 }
 ```
 

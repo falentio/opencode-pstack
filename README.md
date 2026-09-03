@@ -1,4 +1,4 @@
-# opencode-pstack
+# @falentio/opencode-pstack
 
 An OpenCode plugin port of the [pstack](https://github.com/cursor/plugins/tree/main/pstack)
 plugin by Lauren Tan. pstack is a set of rigorous agent workflow skills and
@@ -12,7 +12,7 @@ Add the package to your `opencode.json`:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-pstack"]
+  "plugin": ["@falentio/opencode-pstack"]
 }
 ```
 
@@ -20,7 +20,7 @@ For a local checkout, point at the package directory instead:
 
 ```json
 {
-  "plugin": ["/abs/path/to/opencode-pstack"]
+  "plugin": ["/abs/path/to/your/checkout"]
 }
 ```
 
@@ -81,3 +81,23 @@ pnpm check
 
 `pnpm check` runs typecheck, build, and the `node --test` suite against the
 bundled skills and agents.
+
+## Release
+
+Update `package.json` to the release version, then push a matching version tag:
+
+```bash
+pnpm version patch --no-git-tag-version
+git add package.json
+git commit -m "release: v0.1.1"
+git tag v0.1.1
+git push origin main v0.1.1
+```
+
+The publish workflow accepts tags in the `v<version>` format. It runs the full
+check suite, verifies the npm tarball in a temporary OpenCode installation, and
+publishes that exact tarball.
+
+Add a granular npm publish token with two-factor-authentication bypass to the
+repository secret `NPM_TOKEN`. Keep the token scoped to this package and set an
+expiration date.
