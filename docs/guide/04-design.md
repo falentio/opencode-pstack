@@ -1,8 +1,8 @@
 # Design before you write code
 
-One attempt at a hard design locks in the first shape the model thought of. `/architect` settles types and boundaries before implementation. `/arena` runs several attempts at the same brief and merges the best parts. `/interrogate` has other models try to break the result. When the job is coverage rather than design synthesis, `/swarm` fans out slices or races and aggregates their results.
+One attempt at a hard design locks in the first shape the model thought of. `/architect` settles types and boundaries before implementation. `/arena` runs several attempts at the same brief and merges the best parts. `/interrogate` has independent reviewers try to break the result. When the job is coverage rather than design synthesis, `/swarm` fans out slices or races and aggregates their results.
 
-![Three robots draft competing bridge models at their own tables under /architect, /arena, and /interrogate panels, while a judge robot with a clipboard inspects skeptically.](./images/design.jpg)
+![Three robots draft competing bridge designs at their own tables under /architect, /arena, and /interrogate panels, while a judge robot with a clipboard inspects skeptically.](./images/design.jpg)
 
 ## Settle the shape with `/architect`
 
@@ -24,7 +24,7 @@ By default it proceeds straight from the synthesized design into implementation.
 /arena take my prompt to the arena verbatim. i want to compare their proposals with yours.
 ```
 
-[`/arena`](../../skills/arena/SKILL.md) is the general tool underneath. N subagents attempt the same design or code brief in parallel, each writing to its own worktree or directory. A read-only judge, on a different model family when your configuration allows one, scores every candidate against a rubric. The coordinator reads each candidate end to end, picks a base, grafts in the best ideas from the losers, and verifies the result.
+[`/arena`](../../skills/arena/SKILL.md) is the general tool underneath. N subagents attempt the same design or code brief in parallel, each writing to its own worktree or directory. A read-only judge on the inherited parent model scores every candidate against a rubric. The coordinator reads each candidate end to end, picks a base, grafts in the best ideas from the losers, and verifies the result.
 
 ```mermaid
 flowchart LR
@@ -40,7 +40,7 @@ flowchart LR
     H --> I[Verify]
 ```
 
-The panel runs on the parent chat model by default. Each subagent inherits unless you name a model in the `Task` call. Ask for more candidates when the decision matters, fewer when it doesn't:
+The panel runs every subagent on the parent chat model. Each `Task` call omits `Task.model`. Ask for more candidates when the decision matters, fewer when it doesn't:
 
 ```text
 /arena this, 5 candidates. the cache key format is expensive to change later.
@@ -62,7 +62,7 @@ Reach for it when parallelism buys coverage or lets independent checks race. `/a
 /interrogate the whole branch, but skeptically. no nitpicks unless it's an actual bug or regression.
 ```
 
-[`/interrogate`](../../skills/interrogate/SKILL.md) sends the same diff, intent, and rubric to several reviewers on different model families. Model diversity is the point. Different models have different blind spots, so a finding two models raise independently is high-confidence signal. The lead sorts everything into `Act on`, `Consider`, `Noted`, and `Dismissed`, with a reason for each dismissal, and applies nothing automatically.
+[`/interrogate`](../../skills/interrogate/SKILL.md) sends the same diff, intent, and rubric to several independent reviewers on the inherited parent model. Independent passes are the point. A finding multiple reviewers raise independently is high-confidence signal. The lead sorts everything into `Act on`, `Consider`, `Noted`, and `Dismissed`, with a reason for each dismissal, and applies nothing automatically.
 
 Read the dismissals too. The lead is a pragmatic senior engineer, not an oracle, and you can override it.
 

@@ -38,7 +38,10 @@ Run the `poteto-mode` skill at the start of a task:
 ```
 
 `poteto-mode` reads your request, picks from a set of playbooks, and routes to
-the other skills as needed. Subagents inherit the parent chat model by default. Name a model in a `Task` call when a particular subagent needs to differ.
+the other skills as needed. OpenCode subagents always inherit the parent chat
+model. OpenCode does not support selecting a different model for an individual
+subagent, so every `Task` call omits `Task.model`. Parallel subagents provide
+independent passes, not model diversity.
 
 New here? The [pstack guide](docs/guide/README.md) walks you through a first
 real task, from setup and prompting through verification and overnight runs.
@@ -66,11 +69,11 @@ replaces existing skill paths or clobbers existing agents.
 - The Cursor `automations/benny` directory is not ported. Those are Slack issue
   automations that depend on Cursor's automation runtime; OpenCode has no
   equivalent.
-- Model choices and reviewer defaults in the skills reference Cursor's
-  `Task` subagent API. The skills are instruction documents, so they remain
-  useful, but the model names they mention (`grok-4.6-fast-xhigh`,
-  `claude-fable-5-thinking-max`, etc.) are examples from the Cursor setup;
-  OpenCode exposes providers under `provider/model-id` names.
+- Cursor's pstack relies on per-subagent model selection for some delegates,
+  reviewer panels, and judges. OpenCode has no per-subagent model selection.
+  This port therefore omits `Task.model` everywhere and runs every subagent on
+  the parent chat model. The skills retain parallelism and independent review,
+  but cannot provide Cursor's model diversity.
 
 ## Development
 

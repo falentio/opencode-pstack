@@ -1,6 +1,6 @@
 # Set up pstack
 
-In this page you install the plugin and run your first task. There is no per-role model configuration step. pstack subagents inherit the parent chat model by default; name a model in a `Task` call when a particular subagent needs to differ.
+In this page you install the plugin and run your first task. OpenCode has no per-role or per-subagent model configuration. Every pstack subagent inherits the parent chat model, so its `Task` call omits `Task.model`.
 
 ## Install the plugin
 

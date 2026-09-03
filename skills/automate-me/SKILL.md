@@ -31,7 +31,7 @@ Locate the active workspace's transcripts before fanning out. The system prompt 
 Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers. Default signals worth hunting:
 
 - Response preferences (length, tone, format, "dumb it down" corrections)
-- Delegation habits (subagents, models, specialized workflows, parallelism)
+- Delegation habits (subagents, inherited-model parallelism, specialized workflows)
 - Verification posture (what "done" means; unit tests vs live repro; reviewers)
 - Code and prose discipline (style, principles cited, lint/format tools)
 - Process conventions (worktrees, commits, PRs, review/merge tooling)
@@ -54,7 +54,7 @@ Group the combined signals into sections. Common ones (use only what applies):
 - **Response style**: length, tone, format.
 - **Autonomy**: how much to do without asking; MCP tool use.
 - **Understand first**: which skills to reach for when scoping or investigating a change.
-- **Subagents**: default, parallelism, model-to-task, specialized workflows.
+- **Subagents**: defaults, parallelism, inherited-model delegation, specialized workflows.
 - **Prose / code discipline**: principles, lint tools, style guides.
 - **Review and verify**: repro posture, verification skills, live-testing tools.
 - **Process**: git worktrees, commits, PRs, review/merge tooling.
