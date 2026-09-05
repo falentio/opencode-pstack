@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config, Plugin, PluginInput } from "@opencode-ai/plugin";
 import { loadCatalog } from "./catalog.ts";
+import { handleCompacting } from "./poteto-compaction.ts";
 
 // dist/index.js sits one level under the package root.
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -37,6 +38,9 @@ const PstackPlugin: Plugin = async ({ client }) => ({
         error: String(error),
       });
     }
+  },
+  async "experimental.session.compacting"(input, output) {
+    await handleCompacting(client, input.sessionID, output);
   },
 });
 
