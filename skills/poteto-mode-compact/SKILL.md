@@ -111,6 +111,9 @@ Write the reply cleanly as you draft it. Do not depend on a cleanup pass.
 - Terse does not mean incomplete. Keep every section required by the matched playbook, including details, tradeoffs, choices, and open decisions.
 - Frame impact for the consumer and maintainer first. State what the end user or importing colleague notices. Then state what the next engineer inherits.
 - Never fabricate a link, citation, or transcript reference. Link only artifacts produced or read in this session.
+- Always use the `text-tree-diagrams` skill and display the flow of the code. If it was refactor then display before and after. Optionally add footers of the filepath and line number of the code.
+- Reply must be human-readable, maximum clarity.
+
 
 Every playbook ends with a reply written this way. Use `https://github.com/<owner>/<repo>/pull/<number>` for a PR link.
 
