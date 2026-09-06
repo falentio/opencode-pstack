@@ -44,7 +44,7 @@ fi
 SKILLS="$(curl -sf --max-time 10 "http://127.0.0.1:$PORT/skill")"
 AGENTS="$(curl -sf --max-time 10 "http://127.0.0.1:$PORT/agent")"
 
-expected_skills='poteto-mode make-bot-ui how unslop principle-laziness-protocol'
+expected_skills='poteto-mode poteto-mode-compact make-bot-ui how unslop principle-laziness-protocol'
 missing_skills=""
 for s in $expected_skills; do
   if ! echo "$SKILLS" | grep -q "\"name\":\"$s\""; then
@@ -64,6 +64,7 @@ installed_files_ok=1
 for s in $expected_skills; do
   if [ ! -f "$PLUGIN_PATH/skills/$s/SKILL.md" ]; then installed_files_ok=0; fi
 done
+if [ ! -f "$PLUGIN_PATH/skills/poteto-mode-compact/playbooks/session-pickup.md" ]; then installed_files_ok=0; fi
 
 echo "--- results ---"
 echo "skills found: $(echo "$SKILLS" | grep -o '"name":"[^"]*"' | wc -l)"

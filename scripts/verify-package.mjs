@@ -83,6 +83,7 @@ try {
     "agents/poteto-agent.md",
     "docs/guide/README.md",
     ...localSkills,
+    "skills/poteto-mode-compact/playbooks/session-pickup.md",
   ];
   for (const path of requiredPaths) check(archivePaths.has(path), `packed file is missing: ${path}`);
 

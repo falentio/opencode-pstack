@@ -35,6 +35,20 @@ test("findPotetoEvidence matches a slash command", () => {
   const out = findPotetoEvidence([userText("please /poteto-mode resume")]);
   assert.ok(out);
   assert.equal(out.kind, "slash-command");
+  assert.equal(out.mode, "full");
+});
+
+test("findPotetoEvidence matches the compact slash command", () => {
+  const out = findPotetoEvidence([userText("please /poteto-mode-compact resume")]);
+  assert.ok(out);
+  assert.equal(out.kind, "slash-command");
+  assert.equal(out.mode, "compact");
+});
+
+test("findPotetoEvidence rejects longer slash command names", () => {
+  for (const text of ["/poteto-mode-compact-extra", "/poteto-mode_extra"]) {
+    assert.equal(findPotetoEvidence([userText(text)]), null, text);
+  }
 });
 
 test("findPotetoEvidence ignores mere discussion without a slash", () => {
@@ -58,6 +72,7 @@ test("findPotetoEvidence ignores a slash command with same-message opt out", () 
     "/poteto-mode turn off please",
     "/poteto-mode exit",
     "/poteto-mode quit",
+    "/poteto-mode-compact opt out",
   ];
   for (const text of cases) {
     assert.equal(findPotetoEvidence([userText(text)]), null, text);
@@ -68,17 +83,38 @@ test("findPotetoEvidence matches a skill call for poteto-mode", () => {
   const out = findPotetoEvidence([toolMessage("skill", { name: "poteto-mode" })]);
   assert.ok(out);
   assert.equal(out.kind, "skill-call");
+  assert.equal(out.mode, "full");
+});
+
+test("findPotetoEvidence matches an exact compact skill call", () => {
+  const out = findPotetoEvidence([toolMessage("skill", { name: "poteto-mode-compact" })]);
+  assert.ok(out);
+  assert.equal(out.kind, "skill-call");
+  assert.equal(out.mode, "compact");
+});
+
+test("findPotetoEvidence reads serialized exact skill input", () => {
+  const out = findPotetoEvidence([toolMessage("skill", '{"name":"poteto-mode-compact"}')]);
+  assert.ok(out);
+  assert.equal(out.mode, "compact");
 });
 
 test("findPotetoEvidence ignores a skill call for another skill", () => {
-  const out = findPotetoEvidence([toolMessage("skill", { name: "other-skill" })]);
-  assert.equal(out, null);
+  for (const input of [
+    { name: "other-skill" },
+    { name: "poteto-mode-compact-extra" },
+    { description: "poteto-mode-compact" },
+  ]) {
+    const out = findPotetoEvidence([toolMessage("skill", input)]);
+    assert.equal(out, null);
+  }
 });
 
 test("findPotetoEvidence matches a task spawn for poteto-agent", () => {
   const out = findPotetoEvidence([toolMessage("task", { subagent_type: "poteto-agent" })]);
   assert.ok(out);
   assert.equal(out.kind, "agent-spawn");
+  assert.equal(out.mode, "full");
 });
 
 test("findPotetoEvidence ignores a task spawn for another agent", () => {
@@ -110,15 +146,22 @@ test("findPotetoEvidence stays closed on malformed shapes", () => {
 });
 
 test("buildResumeContext names the kind and stays under 80 words", () => {
-  for (const kind of ["slash-command", "skill-call", "agent-spawn"] as const) {
-    const text = buildResumeContext({ kind, detail: "x" });
-    assert.ok(text.includes(kind));
-    assert.ok(text.includes("skills/poteto-mode/SKILL.md"));
-    assert.ok(text.includes("skills/poteto-mode/playbooks/session-pickup.md"));
-    assert.ok(text.toLowerCase().includes("if the user opted out"));
-    assert.ok(!text.includes("—"));
-    assert.ok(!text.includes(":"));
-    assert.ok(text.split(/\s+/).filter(Boolean).length < 80);
+  for (const mode of ["full", "compact"] as const) {
+    for (const kind of ["slash-command", "skill-call", "agent-spawn"] as const) {
+      const text = buildResumeContext({ kind, mode, detail: "x" });
+      assert.ok(text.includes(kind));
+      const skillPath = mode === "compact" ? "skills/poteto-mode-compact/SKILL.md" : "skills/poteto-mode/SKILL.md";
+      const pickupPath =
+        mode === "compact"
+          ? "skills/poteto-mode-compact/playbooks/session-pickup.md"
+          : "skills/poteto-mode/playbooks/session-pickup.md";
+      assert.ok(text.includes(skillPath));
+      assert.ok(text.includes(pickupPath));
+      assert.ok(text.toLowerCase().includes("if the user opted out"));
+      assert.ok(!text.includes("—"));
+      assert.ok(!text.includes(":"));
+      assert.ok(text.split(/\s+/).filter(Boolean).length < 80);
+    }
   }
 });
 
@@ -141,6 +184,17 @@ test("handleCompacting pushes one entry when evidence exists", async () => {
   await handleCompacting(client as never, "s1", output);
   assert.equal(output.context.length, 1);
   assert.ok(output.context[0].includes("slash-command"));
+  assert.equal(output.prompt, undefined);
+});
+
+test("handleCompacting resumes compact mode from compact evidence", async () => {
+  const logs: unknown[] = [];
+  const client = fakeClient([toolMessage("skill", { name: "poteto-mode-compact" })], logs);
+  const output: { context: string[]; prompt?: string } = { context: [] };
+  await handleCompacting(client as never, "s1", output);
+  assert.equal(output.context.length, 1);
+  assert.ok(output.context[0].includes("skills/poteto-mode-compact/SKILL.md"));
+  assert.ok(output.context[0].includes("skills/poteto-mode-compact/playbooks/session-pickup.md"));
   assert.equal(output.prompt, undefined);
 });
 

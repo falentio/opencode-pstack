@@ -1,0 +1,31 @@
+### Shipping
+
+**You own what lands.** Verify each PR independently before arming anything. Land only the verified run from the root. Keep your hands off the queue after it starts draining. Use this playbook for "land the stack", "ship it", "enable merge when ready", or the second half of a stack that **Babysit** already drove to green.
+
+This is the half after the local [Babysit playbook](./babysit.md). Babysit makes a stack mergeable. Shipping decides what is safe to merge and lets Graphite drain it. Green is not safe. This playbook closes the gap between those two states.
+
+1. **Verify every PR independently before arming anything.** Create one subagent per PR through the Task tool. Keep each PR's verification separate instead of batching PRs. Have each subagent exercise the real surface required by the change, using `control-ui` or `control-cli` from `cursor-team-kit`, against the parent versus the head. Require each subagent to return `PASS`, `PASS+NOTES`, or `FAIL`. Have each subagent post its verdict on its own PR so the record outlives the chat. Treat a verdict as safe evidence only when the agent that produced it did not write the code. Green CI is not a verdict. An approving bot review is not a verdict. **Completion criterion.** Every PR has one posted verdict from an agent that did not write its code, and every verdict is `PASS`, `PASS+NOTES`, or `FAIL`.
+
+2. **Land only the contiguous verified run rooted at the bottom.** Start at the lowest unmerged PR and walk upward. Stop at the first PR without a passing verdict. Both `PASS` and `PASS+NOTES` pass this gate. A verified PR above an unverified PR is not landable because merging it would pull the gap underneath it. Report the ceiling as a PR number and state what breaks the chain. **Completion criterion.** The bottom-up walk has stopped at the first PR without `PASS` or `PASS+NOTES`, or has reached the ceiling, and the report names the ceiling and the chain break.
+
+3. **Re-check that the verdicts still describe the code.** A restack rewrites every SHA above it and silently invalidates every verdict without touching a single check. Before trusting an older verdict, compare `git patch-id` at the verdict SHA against the current head. Re-verify every PR whose patch id drifted. Twenty-one verdicts went stale this way in one run with no signal at all. **Completion criterion.** Every verdict in the verified run has a matching patch id at its current head, and every drifted PR has a fresh verdict.
+
+4. **Arm merge-when-ready through Graphite, and pass `--always`.** A no-op submit skips the Graphite update and silently arms nothing, which reads exactly like success. Run this command.
+
+   ```bash
+   gt submit --merge-when-ready --always --update-only --no-interactive
+   ```
+
+   **Completion criterion.** The exact command has run with `--always`, Graphite has received the update, and no no-op submit is being treated as proof that merge-when-ready is armed.
+
+5. **Never enable GitHub auto-merge on a stack.** Only the root targets protected trunk. Each child targets its unprotected parent branch and already reads `CLEAN`. GitHub would merge children into parents immediately and collapse the stack into itself. Graphite makes the merges sequential. If a previous agent armed GitHub auto-merge, disarm it with `gh pr merge <n> --disable-auto` and confirm that the field is back off. **Completion criterion.** Only the root targets protected trunk, every child targets its unprotected parent branch and reads `CLEAN`, and GitHub auto-merge is off for every PR.
+
+6. **Use Graphite's own state to confirm merge-when-ready.** Do not read `autoMergeRequest` as proof that MWR is armed. It stays off until Graphite reaches that PR at the queue front, so an unarmed reading is meaningless. Acting on that reading leads to re-submitting branches that were already fine. Confirm arming from Graphite's own state. If you cannot confirm it, say so instead of inferring it. **Completion criterion.** Graphite's own state confirms arming for the verified run, or the report states that arming could not be confirmed.
+
+7. **Stop touching the stack once the queue is draining.** Do not run `gt sync`, restack, speculative pushes, or `gt submit --stack`. `gt submit --stack` reaches downstack into PRs that are mid-merge. Even a plain `gt submit` can retarget a base if local Graphite tracking has diverged. Run `gt` only from a worktree whose parentage you have just checked. Re-parent independent work onto trunk and ship it on its own. **Completion criterion.** The queue is draining, the stack has received no `gt sync`, restack, speculative push, or `gt submit --stack`, every `gt` command used a worktree with freshly checked parentage, and independent work is re-parented onto trunk for separate shipping.
+
+8. **Watch the drain, and do not drive it.** Arm the watcher in queued mode over the verified run. Hold it under `/loop` in dynamic mode. Re-arm it after any verdict you act on. Continue until it reports `COMPLETE` at the ceiling. Treat `ADVANCE` as progress, not termination. Bases retarget and `graphite-base/*` refs are cut as each PR merges. That is Graphite working, not damage. Report each merge and the new ceiling. If the queue stalls, diagnose before mutating because a stalled queue and a broken stack look identical from the outside. **Completion criterion.** The watcher ran in queued mode under `/loop` in dynamic mode, was re-armed after every acted-on verdict, no `ADVANCE` ended the watch, it reports `COMPLETE` at the ceiling, and every merge and new ceiling is reported after stalls were diagnosed before mutation.
+
+9. **Stop at the ceiling.** When the verified run is merged, report what landed, the next unverified PR, and what verifying it would take. Extending the run is a new pass through step 1. It is not a judgment call to make at 3am. **Completion criterion.** The verified run has stopped at its ceiling, the report names what landed and the next unverified PR, and the report states what step 1 verification would require.
+
+**Reply:** the verified run and its ceiling, each PR's verdict and who produced it, what you armed and how you confirmed it, what landed, and what the next gap needs.

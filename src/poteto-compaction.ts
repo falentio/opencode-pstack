@@ -1,6 +1,11 @@
 import type { PluginInput } from "@opencode-ai/plugin";
 
-export type PotetoEvidence = { kind: "slash-command" | "skill-call" | "agent-spawn"; detail: string };
+export type PotetoMode = "full" | "compact";
+export type PotetoEvidence = {
+  kind: "slash-command" | "skill-call" | "agent-spawn";
+  mode: PotetoMode;
+  detail: string;
+};
 
 // @opencode-ai/plugin imports Message and Part for its own hooks but does not
 // re-export them, so keep the narrow shape this hook actually reads.
@@ -19,8 +24,24 @@ export type PotetoSessionMessage = {
 };
 
 const MAX_MESSAGES = 300;
-const SLASH_COMMAND_PATTERN = /(^|\s)\/poteto-mode\b/;
+const SLASH_COMMAND_PATTERN = /(^|\s)\/(poteto-mode-compact|poteto-mode)(?![\w-])/;
 const OPT_OUT_PATTERN = /\b(opt\s*-?\s*out|stop|disable|turn\s+off|exit|quit)\b/i;
+
+type ResumePaths = Readonly<{
+  skill: string;
+  sessionPickup: string;
+}>;
+
+const RESUME_PATHS = {
+  full: {
+    skill: "skills/poteto-mode/SKILL.md",
+    sessionPickup: "skills/poteto-mode/playbooks/session-pickup.md",
+  },
+  compact: {
+    skill: "skills/poteto-mode-compact/SKILL.md",
+    sessionPickup: "skills/poteto-mode-compact/playbooks/session-pickup.md",
+  },
+} as const satisfies Record<PotetoMode, ResumePaths>;
 
 export function findPotetoEvidence(messages: readonly PotetoSessionMessage[]): PotetoEvidence | null {
   try {
@@ -40,7 +61,8 @@ export function findPotetoEvidence(messages: readonly PotetoSessionMessage[]): P
 }
 
 export function buildResumeContext(evidence: PotetoEvidence): string {
-  return `Poteto mode was active via ${evidence.kind}. Re-read skills/poteto-mode/SKILL.md in full including the Principles index. Resume from the summary using skills/poteto-mode/playbooks/session-pickup.md. If the user opted out, ignore this note.`;
+  const paths = RESUME_PATHS[evidence.mode];
+  return `Poteto mode was active via ${evidence.kind}. Re-read ${paths.skill} in full including the Principles index. Resume from the summary using ${paths.sessionPickup}. If the user opted out, ignore this note.`;
 }
 
 export async function handleCompacting(
@@ -72,23 +94,54 @@ function matchSlashCommand(message: PotetoSessionMessage): PotetoEvidence | null
     .filter((part) => part.type === "text" && typeof part.text === "string")
     .map((part) => part.text as string)
     .join("\n");
-  if (!SLASH_COMMAND_PATTERN.test(text)) return null;
+  const match = SLASH_COMMAND_PATTERN.exec(text);
+  if (!match) return null;
   if (OPT_OUT_PATTERN.test(text)) return null;
-  return { kind: "slash-command", detail: text.trim().slice(0, 200) };
+  return {
+    kind: "slash-command",
+    mode: match[2] === "poteto-mode-compact" ? "compact" : "full",
+    detail: text.trim().slice(0, 200),
+  };
 }
 
 function matchToolPart(message: PotetoSessionMessage): PotetoEvidence | null {
   for (const part of message.parts) {
     if (part.type !== "tool" || typeof part.tool !== "string") continue;
     const input = part.state?.input;
-    if (part.tool === "skill" && inputMentions(input, "poteto-mode")) {
-      return { kind: "skill-call", detail: "skill tool invoked for poteto-mode" };
+    if (part.tool === "skill") {
+      const mode = matchSkillMode(input);
+      if (mode) {
+        const name = mode === "compact" ? "poteto-mode-compact" : "poteto-mode";
+        return { kind: "skill-call", mode, detail: `skill tool invoked for ${name}` };
+      }
     }
     if (part.tool === "task" && inputMentions(input, "poteto-agent")) {
-      return { kind: "agent-spawn", detail: "task tool spawned poteto-agent" };
+      return { kind: "agent-spawn", mode: "full", detail: "task tool spawned poteto-agent" };
     }
   }
   return null;
+}
+
+function matchSkillMode(input: unknown): PotetoMode | null {
+  const name = readStringField(input, "name");
+  if (name === "poteto-mode") return "full";
+  if (name === "poteto-mode-compact") return "compact";
+  return null;
+}
+
+function readStringField(input: unknown, field: "name" | "subagent_type"): string | null {
+  if (typeof input === "string") {
+    try {
+      const parsed = JSON.parse(input) as unknown;
+      if (parsed && typeof parsed === "object") return readStringField(parsed, field);
+    } catch {
+      return input;
+    }
+    return input;
+  }
+  if (!input || typeof input !== "object") return null;
+  const value = (input as Record<string, unknown>)[field];
+  return typeof value === "string" ? value : null;
 }
 
 function inputMentions(input: unknown, needle: string): boolean {

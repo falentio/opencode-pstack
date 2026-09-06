@@ -31,11 +31,15 @@ No files are copied anywhere.
 
 ## Get started
 
-Run the `poteto-mode` skill at the start of a task:
+Run `poteto-mode` for full instructions or `poteto-mode-compact` for the compact
+instruction set at the start of a task:
 
 ```
 /poteto-mode this pr has a subtle bug where the scroll drifts every 750ms. repro first, then fix and verify.
 ```
+
+Use `/poteto-mode-compact` when you want the same playbook routing with the
+compact skill.
 
 `poteto-mode` reads your request, picks from a set of playbooks, and routes to
 the other skills as needed. OpenCode subagents always inherit the parent chat
