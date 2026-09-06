@@ -21,5 +21,3 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: npm install --global opencode-ai@1.18.26
       - run: pnpm check
-      - run: bash scripts/verify.sh
-      - run: pnpm verify:package

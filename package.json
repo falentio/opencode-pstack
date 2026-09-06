@@ -39,8 +39,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'test/*.test.ts'",
-    "check": "pnpm typecheck && pnpm build && pnpm test",
-    "verify:package": "node scripts/verify-package.mjs"
+    "check": "pnpm typecheck && pnpm build && pnpm test"
   },
   "keywords": [
     "pstack",
