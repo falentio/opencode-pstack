@@ -12,7 +12,8 @@
   "license": "MIT",
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "description": "OpenCode port of pstack, the rigorous agent workflow skills from Cursor.",
   "type": "module",

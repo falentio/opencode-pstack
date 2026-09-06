@@ -102,9 +102,10 @@ git push origin main v0.1.1
 ```
 
 The publish workflow accepts tags in the `v<version>` format. It runs the full
-check suite, verifies the npm tarball in a temporary OpenCode installation, and
-publishes that exact tarball.
+check suite and publishes the package to npm with provenance.
 
-Add a granular npm publish token with two-factor-authentication bypass to the
-repository secret `NPM_TOKEN`. Keep the token scoped to this package and set an
-expiration date.
+Publishing uses npm trusted publishing, so the repository stores no publish
+token. Set up the trusted publisher once on npmjs.com. Trust the GitHub
+repository `falentio/opencode-pstack`, the workflow file `publish.yml`, and the
+`npm publish` action. Publishing then authenticates with the GitHub Actions
+OIDC identity from that workflow.
