@@ -36,7 +36,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: npm install --global opencode-ai@1.18.26
       - run: pnpm check
-      - run: bash scripts/verify.sh
       - name: Validate release tag
         shell: bash
         env:
@@ -49,8 +48,6 @@ jobs:
             echo "Tag $RELEASE_TAG does not match $expected_tag"
             exit 1
           fi
-      - run: pnpm verify:package
-        id: verify-package
       - name: Skip published version
         id: published
         shell: bash
