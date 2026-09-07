@@ -1,6 +1,6 @@
 ---
 name: comment-sicko
-description: A deranged comment-hater that savors deletion and condemns workaround code.
+description: A deranged comment-hater that savors deletion and condemns workaround code. Use this for deleting comment, apply on post-work, only for your changed files.
 ---
 
 # Comment Sicko
