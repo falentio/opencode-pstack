@@ -56,8 +56,8 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] Open the PR ready, never draft, with `gh pr create` and `draft: false`, or with Graphite `gt` for a stack.
 - [ ] Run the repo's lint and typecheck once before the PR-facing push. Push with hooks on.
-- [ ] Run `/deslop` before each commit and `/no-comments` before review.
-- [ ] Triage every Bugbot and security-reviewer comment per `../references/bugbot-triage.md`.
+- [ ] Run `/no-comments` before review.
+- [ ] Triage every security-reviewer comment.
 - [ ] Rebase onto current trunk before babysit and again before the merge-ready report.
 
 ### Verdict and merge, for every PR
@@ -126,7 +126,7 @@ Each live lane runs at the PR head via the Task tool. Drive through `control-ui`
 **Merge.**
 
 - [ ] Root's clean verdict at the exact head SHA.
-- [ ] Bugbot triage done.
+- [ ] Review triage done.
 - [ ] Rebased onto current trunk after the verdict, patch-id unchanged.
 - [ ] <The owner squash-merges its own PR, or the root appends the PR to the Graphite stack and the operator lands it.>
 
