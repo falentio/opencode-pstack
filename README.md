@@ -78,6 +78,16 @@ replaces existing skill paths or clobbers existing agents.
   This port therefore omits `Task.model` everywhere and runs every subagent on
   the parent chat model. The skills retain parallelism and independent review,
   but cannot provide Cursor's model diversity.
+- Four skills are opencode-native additions with no Cursor counterpart in pstack:
+  `deslop` (diff cleanup before commit), `control-ui` and `control-cli`
+  (drive the real UI or CLI and capture evidence), and `using-git-worktrees`
+  (isolated workspaces via native tools or git worktree fallback).
+- Stacking uses plain `git` branches plus `gh` (`gh pr create`, `gh pr edit
+  --base`, bottom-up `gh` merges). There is no `gt` CLI and no Graphite UI,
+  merge-when-ready, or `graphite-base` refs. Loops use background Tasks with
+  poll instead of a built-in loop command, and goals live in a goal file the
+  run re-reads. Session history comes from the opencode session API, not
+  `~/.cursor/projects` transcript paths.
 
 ## Development
 

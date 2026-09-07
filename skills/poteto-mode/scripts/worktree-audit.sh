@@ -22,7 +22,10 @@ prs=$(mktemp)
 gh pr list --author "@me" --state all --limit 1000 \
 	--json number,state,headRefName 2>/dev/null > "$prs" || echo "[]" > "$prs"
 
-# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.
+# Session history: opencode keeps session messages via its session API, not in
+# a fixed transcripts dir. LAST_CHAT below is best-effort: it checks the legacy
+# Cursor path when present and prints "-" otherwise. Never fail the audit when
+# no session store exists.
 slug=$(printf '%s' "$main_wt" | sed 's#^/##; s#/#-#g')
 transcripts="$HOME/.cursor/projects/$slug/agent-transcripts"
 now=$(date +%s)

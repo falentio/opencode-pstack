@@ -102,7 +102,7 @@ async function makeGitStack(directory: string): Promise<{
   };
 }
 
-async function withFakeGt<T>({
+async function withFakeGh<T>({
   directory,
   operation,
   output,
@@ -112,39 +112,30 @@ async function withFakeGt<T>({
   output: string;
 }): Promise<T> {
   const bin = join(directory, "bin");
-  const outputPath = join(directory, "gt-output.txt");
+  const outputPath = join(directory, "gh-output.json");
   await mkdir(bin);
   await writeFile(outputPath, output);
-  const gt = join(bin, "gt");
+  const gh = join(bin, "gh");
   await writeFile(
-    gt,
+    gh,
     `#!/usr/bin/env bash
 set -euo pipefail
 if [ "$(pwd -P)" != "${realpathSync(join(directory, "repo"))}" ]; then
-  printf 'gt ran outside the fixture repo: %s\\n' "$(pwd -P)" >&2
+  printf 'gh ran outside the fixture repo: %s\\n' "$(pwd -P)" >&2
   exit 2
 fi
 case "$*" in
-  "--no-interactive log short --stack --reverse")
+  "pr list"*)
     cat "${outputPath}"
     ;;
-  "--no-interactive info stack/merged")
-    printf 'stack/merged\\nPR #10 (Merged) merged change\\n'
-    ;;
-  "--no-interactive info stack/closed")
-    printf 'stack/closed\\nPR #13 (Closed) closed change\\n'
-    ;;
-  "--no-interactive info stack/open")
-    printf 'stack/open\\nPR #11 (Needs approvals) open change\\n'
-    ;;
   *)
-    printf 'unexpected gt arguments: %s\\n' "$*" >&2
+    printf 'unexpected gh arguments: %s\\n' "$*" >&2
     exit 2
     ;;
 esac
 `
   );
-  await chmod(gt, 0o755);
+  await chmod(gh, 0o755);
 
   const originalPath = process.env.PATH;
   process.env.PATH = `${bin}:${originalPath ?? ""}`;
@@ -406,16 +397,31 @@ describe("Store", () => {
     ]);
   });
 
-  it("resolves the ordered Graphite frontier and validates an optional pin", async () => {
+  it("resolves the ordered stack frontier via gh and validates an optional pin", async () => {
     const { directory, store } = await initializedStore();
     const stack = await makeGitStack(directory);
-    const output = `◯ main
-◯ stack/merged
-◯ stack/closed
-◉ stack/open (current)
-`;
+    const output = JSON.stringify([
+      {
+        number: 10,
+        state: "MERGED",
+        headRefName: "stack/merged",
+        baseRefName: "main",
+      },
+      {
+        number: 13,
+        state: "CLOSED",
+        headRefName: "stack/closed",
+        baseRefName: "stack/merged",
+      },
+      {
+        number: 11,
+        state: "OPEN",
+        headRefName: "stack/open",
+        baseRefName: "stack/closed",
+      },
+    ]);
 
-    await withFakeGt({
+    await withFakeGh({
       directory,
       output,
       operation: async () => {
@@ -458,7 +464,7 @@ describe("Store", () => {
             prs: [10, 11, 12],
           })
         ).rejects.toThrow(
-          "frontier pin mismatch: missing from gt: 12; extra in gt: 13"
+          "frontier pin mismatch: missing from gh: 12; extra in gh: 13"
         );
         await expect(
           store.frontier.set({
@@ -466,7 +472,7 @@ describe("Store", () => {
             prs: [13, 10, 11],
           })
         ).rejects.toThrow(
-          "frontier pin mismatch: order differs: expected 13,10,11; gt 10,13,11"
+          "frontier pin mismatch: order differs: expected 13,10,11; gh 10,13,11"
         );
         await expect(
           store.frontier.set({
@@ -478,19 +484,17 @@ describe("Store", () => {
     });
   });
 
-  it("rejects unparseable Graphite output loudly", async () => {
+  it("rejects unparseable gh output loudly", async () => {
     const { directory, store } = await initializedStore();
     const stack = await makeGitStack(directory);
 
-    await withFakeGt({
+    await withFakeGh({
       directory,
-      output: "◯ main\nthis line is not Graphite output\n",
+      output: "this line is not gh JSON output\n",
       operation: async () => {
         await expect(
           store.frontier.set({ repo: stack.repo })
-        ).rejects.toThrow(
-          'gt log short output has an unparseable line 2: "this line is not Graphite output"'
-        );
+        ).rejects.toThrow("gh pr list output is not valid JSON");
       },
     });
   });
