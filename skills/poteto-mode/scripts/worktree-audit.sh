@@ -4,7 +4,8 @@
 # operated in it. Emits a table sorted by size with a suggested bucket. Never
 # deletes anything; deletion stays a human-gated step in the playbook.
 #
-# Usage: worktree-audit.sh [repo-path]   (defaults to the current repo)
+# Usage: worktree-audit.sh [repo-path] [session-store-dir]   (defaults to the current repo;
+# session store defaults to $SESSION_STORE_DIR, empty means skip session scan)
 set -u
 
 repo="${1:-$(git rev-parse --show-toplevel 2>/dev/null)}"
@@ -23,11 +24,12 @@ gh pr list --author "@me" --state all --limit 1000 \
 	--json number,state,headRefName 2>/dev/null > "$prs" || echo "[]" > "$prs"
 
 # Session history: opencode keeps session messages via its session API, not in
-# a fixed transcripts dir. LAST_CHAT below is best-effort: it checks the legacy
-# Cursor path when present and prints "-" otherwise. Never fail the audit when
-# no session store exists.
-slug=$(printf '%s' "$main_wt" | sed 's#^/##; s#/#-#g')
-transcripts="$HOME/.cursor/projects/$slug/agent-transcripts"
+# a fixed transcripts dir. LAST_CHAT below is best-effort: when the caller
+# supplies a session store dir (second arg or SESSION_STORE_DIR, taken from
+# the active workspace's storage path in the system prompt), grep it for the
+# worktree path; otherwise print "-". Never fail the audit when no session
+# store exists.
+transcripts="${2:-${SESSION_STORE_DIR:-}}"
 now=$(date +%s)
 
 printf "SIZE\tAGE\tMERGED\tDIRTY\tREMOTE\tPR\tLAST_CHAT\tBUCKET\tWORKTREE\n"

@@ -65,8 +65,8 @@ replaces existing skill paths or clobbers existing agents.
 
 ## Differences from the Cursor plugin
 
-- Two skill frontmatter `name` fields were normalized to their directory names
-  (`Poteto Mode` → `poteto-mode`, `Make Bot UI` → `make-bot-ui`), because
+- One skill frontmatter `name` field was normalized to its directory name
+  (`Poteto Mode` → `poteto-mode`), because
   OpenCode requires the frontmatter `name` to equal the skill directory name.
 - The two agents are registered with `mode: subagent`; Cursor used its own
   `is_background` flag which OpenCode does not understand.
