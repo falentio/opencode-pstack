@@ -1,0 +1,6 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "@falentio/opencode-pstack@0.4.0"
+  ]
+}
