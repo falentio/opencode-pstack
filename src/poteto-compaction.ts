@@ -1,9 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin";
 
-export type PotetoMode = "full" | "compact";
 export type PotetoEvidence = {
   kind: "slash-command" | "skill-call" | "agent-spawn";
-  mode: PotetoMode;
   detail: string;
 };
 
@@ -24,24 +22,12 @@ export type PotetoSessionMessage = {
 };
 
 const MAX_MESSAGES = 300;
-const SLASH_COMMAND_PATTERN = /(^|\s)\/(poteto-mode-compact|poteto-mode)(?![\w-])/;
-const OPT_OUT_PATTERN = /\b(opt\s*-?\s*out|stop|disable|turn\s+off|exit|quit)\b/i;
+const SLASH_COMMAND_PATTERN = /(^|\s)\/poteto-mode(?![\w-])/;
+const OPT_OUT_PATTERN = /\b(opt\s*-?\s*out|disable|turn\s+off|quit)\b/i;
+const SKILL_CONTENT_MARKER = "# Poteto mode";
 
-type ResumePaths = Readonly<{
-  skill: string;
-  sessionPickup: string;
-}>;
-
-const RESUME_PATHS = {
-  full: {
-    skill: "skills/poteto-mode/SKILL.md",
-    sessionPickup: "skills/poteto-mode/playbooks/session-pickup.md",
-  },
-  compact: {
-    skill: "skills/poteto-mode-compact/SKILL.md",
-    sessionPickup: "skills/poteto-mode-compact/playbooks/session-pickup.md",
-  },
-} as const satisfies Record<PotetoMode, ResumePaths>;
+const SESSION_PICKUP_PATH = "skills/poteto-mode/playbooks/session-pickup.md";
+const SKILL_NAME = "poteto-mode";
 
 export function findPotetoEvidence(messages: readonly PotetoSessionMessage[]): PotetoEvidence | null {
   try {
@@ -60,16 +46,25 @@ export function findPotetoEvidence(messages: readonly PotetoSessionMessage[]): P
   }
 }
 
-export function buildResumeContext(evidence: PotetoEvidence): string {
-  const paths = RESUME_PATHS[evidence.mode];
-  return `Poteto mode was active via ${evidence.kind}. Re-read ${paths.skill} in full including the Principles index. Resume from the summary using ${paths.sessionPickup}. If the user opted out, ignore this note.`;
+export function buildResumeContext(evidence: PotetoEvidence, skillText: string): string {
+  return `Poteto mode is still active, loaded earlier via ${evidence.kind}. The full skill text is reproduced below, so continue under it without re-invoking the skill tool. Resume from the compaction summary using ${SESSION_PICKUP_PATH}. If the user opted out, ignore this note.\n\n${skillText}`;
+}
+
+export function takePendingResume(
+  pending: Map<string, PotetoEvidence>,
+  sessionID: string,
+): PotetoEvidence | undefined {
+  const evidence = pending.get(sessionID);
+  if (evidence) pending.delete(sessionID);
+  return evidence;
 }
 
 export async function handleCompacting(
   client: PluginInput["client"],
   sessionID: string,
   output: { context: string[]; prompt?: string },
-): Promise<void> {
+  skillText: string,
+): Promise<PotetoEvidence | null> {
   try {
     const result = await client.session.messages({ path: { id: sessionID } });
     const data = (result as { data?: readonly PotetoSessionMessage[] }).data;
@@ -78,13 +73,15 @@ export async function handleCompacting(
       if (error) {
         await logError(client, "failed to list session messages for compaction", error);
       }
-      return;
+      return null;
     }
     const evidence = findPotetoEvidence(data);
-    if (!evidence) return;
-    output.context.push(buildResumeContext(evidence));
+    if (!evidence) return null;
+    output.context.push(buildResumeContext(evidence, skillText));
+    return evidence;
   } catch (error) {
     await logError(client, "failed to list session messages for compaction", error);
+    return null;
   }
 }
 
@@ -94,13 +91,13 @@ function matchSlashCommand(message: PotetoSessionMessage): PotetoEvidence | null
     .filter((part) => part.type === "text" && typeof part.text === "string")
     .map((part) => part.text as string)
     .join("\n");
-  const match = SLASH_COMMAND_PATTERN.exec(text);
-  if (!match) return null;
-  if (OPT_OUT_PATTERN.test(text)) return null;
+  const expanded = text.includes(SKILL_CONTENT_MARKER);
+  if (!SLASH_COMMAND_PATTERN.test(text) && !expanded) return null;
+  const instruction = expanded ? text.slice(text.indexOf(SKILL_CONTENT_MARKER) + SKILL_CONTENT_MARKER.length) : text;
+  if (OPT_OUT_PATTERN.test(instruction)) return null;
   return {
     kind: "slash-command",
-    mode: match[2] === "poteto-mode-compact" ? "compact" : "full",
-    detail: text.trim().slice(0, 200),
+    detail: instruction.trim().slice(0, 200),
   };
 }
 
@@ -108,25 +105,18 @@ function matchToolPart(message: PotetoSessionMessage): PotetoEvidence | null {
   for (const part of message.parts) {
     if (part.type !== "tool" || typeof part.tool !== "string") continue;
     const input = part.state?.input;
-    if (part.tool === "skill") {
-      const mode = matchSkillMode(input);
-      if (mode) {
-        const name = mode === "compact" ? "poteto-mode-compact" : "poteto-mode";
-        return { kind: "skill-call", mode, detail: `skill tool invoked for ${name}` };
-      }
+    if (part.tool === "skill" && matchSkillName(input)) {
+      return { kind: "skill-call", detail: `skill tool invoked for ${SKILL_NAME}` };
     }
     if (part.tool === "task" && inputMentions(input, "poteto-agent")) {
-      return { kind: "agent-spawn", mode: "full", detail: "task tool spawned poteto-agent" };
+      return { kind: "agent-spawn", detail: "task tool spawned poteto-agent" };
     }
   }
   return null;
 }
 
-function matchSkillMode(input: unknown): PotetoMode | null {
-  const name = readStringField(input, "name");
-  if (name === "poteto-mode") return "full";
-  if (name === "poteto-mode-compact") return "compact";
-  return null;
+function matchSkillName(input: unknown): boolean {
+  return readStringField(input, "name") === SKILL_NAME;
 }
 
 function readStringField(input: unknown, field: "name" | "subagent_type"): string | null {
