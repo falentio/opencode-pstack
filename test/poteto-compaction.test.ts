@@ -142,14 +142,15 @@ test("findPotetoEvidence stays closed on malformed shapes", () => {
   assert.equal(out, null);
 });
 
-test("buildResumeContext names the kind, embeds the skill text, and keeps the pickup path", () => {
-  const skillText = "# Poteto mode\n\n## Non-negotiables\n\nread the Principles section in full.";
+test("buildResumeContext names the kind, orders re-invocation, and keeps the pickup path", () => {
   for (const kind of ["slash-command", "skill-call", "agent-spawn"] as const) {
-    const text = buildResumeContext({ kind, detail: "x" }, skillText);
+    const text = buildResumeContext({ kind, detail: "x" });
     assert.ok(text.includes(kind));
     assert.ok(text.includes("skills/poteto-mode/playbooks/session-pickup.md"));
-    assert.ok(text.includes(skillText));
+    assert.ok(text.toLowerCase().includes("re-invoke"));
+    assert.ok(text.includes("poteto-mode"));
     assert.ok(text.toLowerCase().includes("if the user opted out"));
+    assert.ok(!text.includes("# Poteto mode"));
     assert.ok(!text.includes("—"));
   }
 });
@@ -161,12 +162,11 @@ test("handleCompacting returns the found evidence and pushes one entry", async (
     logs,
   );
   const output: { context: string[]; prompt?: string } = { context: [] };
-  const skillText = "# Poteto mode\n\nbody";
-  const evidence = await handleCompacting(client as never, "s1", output, skillText);
+  const evidence = await handleCompacting(client as never, "s1", output);
   assert.ok(evidence);
   assert.equal(evidence.kind, "slash-command");
   assert.equal(output.context.length, 1);
-  assert.equal(output.context[0], buildResumeContext(evidence, skillText));
+  assert.equal(output.context[0], buildResumeContext(evidence));
   assert.equal(output.prompt, undefined);
 });
 
@@ -174,7 +174,7 @@ test("handleCompacting returns null when no evidence exists", async () => {
   const logs: unknown[] = [];
   const client = fakeClient([userText("hello there")], logs);
   const output: { context: string[]; prompt?: string } = { context: [] };
-  const evidence = await handleCompacting(client as never, "s1", output, "body");
+  const evidence = await handleCompacting(client as never, "s1", output);
   assert.equal(evidence, null);
   assert.deepEqual(output.context, []);
   assert.equal(output.prompt, undefined);
@@ -184,7 +184,7 @@ test("handleCompacting fails closed when message fetch throws", async () => {
   const logs: unknown[] = [];
   const client = fakeClient(new Error("boom"), logs);
   const output: { context: string[]; prompt?: string } = { context: [] };
-  const evidence = await handleCompacting(client as never, "s1", output, "body");
+  const evidence = await handleCompacting(client as never, "s1", output);
   assert.equal(evidence, null);
   assert.deepEqual(output.context, []);
   assert.equal(output.prompt, undefined);
@@ -194,19 +194,18 @@ test("handleCompacting fails closed when message fetch throws", async () => {
 test("takePendingResume is one-shot per session", () => {
   const pending = new Map<string, PotetoEvidence>();
   const evidence: PotetoEvidence = { kind: "skill-call", detail: "x" };
-  const skillText = "# Poteto mode\n\nbody";
   pending.set("s1", evidence);
 
   const injected: string[] = [];
   const first = takePendingResume(pending, "s1");
-  if (first) injected.push(buildResumeContext(first, skillText));
+  if (first) injected.push(buildResumeContext(first));
   assert.equal(injected.length, 1);
 
   const second = takePendingResume(pending, "s1");
-  if (second) injected.push(buildResumeContext(second, skillText));
+  if (second) injected.push(buildResumeContext(second));
   assert.equal(injected.length, 1);
 
   const other = takePendingResume(pending, "s2");
-  if (other) injected.push(buildResumeContext(other, skillText));
+  if (other) injected.push(buildResumeContext(other));
   assert.equal(injected.length, 1);
 });

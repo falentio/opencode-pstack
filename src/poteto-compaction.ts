@@ -46,8 +46,8 @@ export function findPotetoEvidence(messages: readonly PotetoSessionMessage[]): P
   }
 }
 
-export function buildResumeContext(evidence: PotetoEvidence, skillText: string): string {
-  return `Poteto mode is still active, loaded earlier via ${evidence.kind}. The full skill text is reproduced below, so continue under it without re-invoking the skill tool. Resume from the compaction summary using ${SESSION_PICKUP_PATH}. If the user opted out, ignore this note.\n\n${skillText}`;
+export function buildResumeContext(evidence: PotetoEvidence): string {
+  return `Poteto mode is still active, loaded earlier via ${evidence.kind}. Re-invoke the ${SKILL_NAME} skill via the skill tool now, before any other work, and follow the copy it returns rather than stale instructions from before the summary. Resume from the compaction summary using ${SESSION_PICKUP_PATH}. If the user opted out, ignore this note.`;
 }
 
 export function takePendingResume(
@@ -63,7 +63,6 @@ export async function handleCompacting(
   client: PluginInput["client"],
   sessionID: string,
   output: { context: string[]; prompt?: string },
-  skillText: string,
 ): Promise<PotetoEvidence | null> {
   try {
     const result = await client.session.messages({ path: { id: sessionID } });
@@ -77,7 +76,7 @@ export async function handleCompacting(
     }
     const evidence = findPotetoEvidence(data);
     if (!evidence) return null;
-    output.context.push(buildResumeContext(evidence, skillText));
+    output.context.push(buildResumeContext(evidence));
     return evidence;
   } catch (error) {
     await logError(client, "failed to list session messages for compaction", error);

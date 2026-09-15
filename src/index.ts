@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config, Plugin, PluginInput } from "@opencode-ai/plugin";
@@ -13,8 +13,6 @@ type ConfigWithSkills = Config & { skills?: { paths?: string[] } };
 
 const PstackPlugin: Plugin = async ({ client }) => {
   const pendingResume = new Map<string, PotetoEvidence>();
-  const skillPath = join(packageRoot, "skills", "poteto-mode", "SKILL.md");
-  const skillText = existsSync(skillPath) ? readFileSync(skillPath, "utf8") : "";
   return {
     async config(input) {
       try {
@@ -44,14 +42,14 @@ const PstackPlugin: Plugin = async ({ client }) => {
       }
     },
     async "experimental.session.compacting"(input, output) {
-      const evidence = await handleCompacting(client, input.sessionID, output, skillText);
+      const evidence = await handleCompacting(client, input.sessionID, output);
       if (evidence) pendingResume.set(input.sessionID, evidence);
     },
     async "experimental.chat.system.transform"(input, output) {
       if (!input.sessionID) return;
       const evidence = takePendingResume(pendingResume, input.sessionID);
       if (!evidence) return;
-      output.system.push(buildResumeContext(evidence, skillText));
+      output.system.push(buildResumeContext(evidence));
     },
   };
 };
