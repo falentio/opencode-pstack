@@ -59,19 +59,26 @@ test("parseAgentMarkdown rejects a flow collection", () => {
   assert.throws(() => parseAgentMarkdown("---\ndescription: [a, b]\n---\nBody.\n"), /flow collection/);
 });
 
-test("parseAgentMarkdown rejects an indented plain-scalar continuation", () => {
-  assert.throws(
-    () => parseAgentMarkdown("---\ndescription: first line\n  second line\n---\nBody.\n"),
-    /multi-line plain scalar/,
-  );
-});
-
 test("parseAgentMarkdown ignores unknown keys that use unsupported scalar forms", () => {
   const out = parseAgentMarkdown(
     ["---", "name: a", "description: fine", "tools: { bash: false }", "---", "Body."].join("\n"),
   );
   assert.equal(out.name, "a");
   assert.equal(out.description, "fine");
+});
+
+test("parseAgentMarkdown rejects a plain scalar wrapped onto a second line", () => {
+  assert.throws(
+    () => parseAgentMarkdown("---\ndescription: first line\n  second line\n---\nBody.\n"),
+    /multi-line plain scalar/,
+  );
+});
+
+test("parseAgentMarkdown rejects an indented frontmatter delimiter", () => {
+  assert.throws(
+    () => parseAgentMarkdown("---\ndescription: first line\n  ---\nBody.\n"),
+    /multi-line plain scalar/,
+  );
 });
 
 test("loadCatalog finds the skills dir and both agents", () => {

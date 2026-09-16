@@ -31,15 +31,15 @@ export function parseAgentMarkdown(markdown: string): AgentDef {
   let activeScalarKey: "name" | "description" | null = null;
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
-    if (line.trim() === "---") {
-      bodyStart = i + 1;
-      break;
-    }
     if (/^\s+\S/.test(line)) {
       if (activeScalarKey) {
         throw new Error(`agent frontmatter ${activeScalarKey} uses a multi-line plain scalar, which this parser does not support`);
       }
       continue;
+    }
+    if (line.trim() === "---") {
+      bodyStart = i + 1;
+      break;
     }
     activeScalarKey = null;
     const colon = line.indexOf(":");
@@ -54,10 +54,10 @@ export function parseAgentMarkdown(markdown: string): AgentDef {
   return { name, description, prompt: lines.slice(bodyStart).join("\n").trim() };
 }
 
-// The agent frontmatter this package ships uses plain and quoted scalars.
-// Reject the other YAML scalar forms on the two keys this parser reads, so a
-// future edit that reaches for a block scalar or flow collection fails loudly
-// instead of registering a description that is literally ">".
+// The agent frontmatter this package ships uses single-line plain and quoted
+// scalars. Reject the other YAML forms on any key, so a future edit that
+// reaches for a block scalar, a flow collection, or a wrapped plain scalar
+// fails loudly instead of registering a truncated or marker-valued description.
 function parseScalar(raw: string, key: string): string {
   if (raw === "") return "";
   if (raw === ">" || raw === "|" || raw.startsWith(">") || raw.startsWith("|")) {
