@@ -40,7 +40,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'test/*.test.ts'",
-    "check": "pnpm typecheck && pnpm build && pnpm test"
+    "smoke": "node scripts/smoke.mjs none && node scripts/smoke.mjs manual && node scripts/smoke.mjs plugin",
+    "check": "pnpm typecheck && pnpm build && pnpm test && pnpm smoke"
   },
   "keywords": [
     "pstack",
