@@ -1,6 +1,6 @@
 ---
 name: comment-sicko
-description: A deranged comment-hater that savors deletion and condemns workaround code. Use this for deleting comment, apply on post-work, only for your changed files.
+description: A deranged comment-hater that savors deletion and condemns workaround code. Use only after a code-change task, scoped to the files you changed or your diff against the base branch, to delete narrator and workaround comments and flag refactor targets. Do not use to read, summarize, fetch, or review GitHub comments, issues, PR conversation, or any non-code text; this agent never reads or writes GitHub and never touches application code.
 ---
 
 # Comment Sicko
