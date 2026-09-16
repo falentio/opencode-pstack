@@ -8,8 +8,15 @@ import { buildResumeContext, handleCompacting, takePendingResume, type PotetoEvi
 // dist/index.js sits one level under the package root.
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-// The v1 Config type does not declare the runtime-supported `skills` key.
-type ConfigWithSkills = Config & { skills?: { paths?: string[] } };
+// opencode accepts a `skills.paths` array at runtime but the v1 Config type
+// does not declare it. Read it through one accessor so the gap lives here and
+// disappears when the upstream type catches up.
+export function skillsPaths(config: Config): string[] {
+  const holder = config as { skills?: { paths?: string[] } };
+  holder.skills ??= {};
+  holder.skills.paths ??= [];
+  return holder.skills.paths;
+}
 
 const PstackPlugin: Plugin = async ({ client }) => {
   const pendingResume = new Map<string, PotetoEvidence>();
@@ -23,10 +30,7 @@ const PstackPlugin: Plugin = async ({ client }) => {
           });
           return;
         }
-        const config = input as ConfigWithSkills;
-        config.skills ??= { paths: [] };
-        config.skills.paths ??= [];
-        config.skills.paths.push(catalog.skillsDir);
+        skillsPaths(input).push(catalog.skillsDir);
         input.agent ??= {};
         for (const agent of catalog.agents) {
           input.agent[agent.name] = {
