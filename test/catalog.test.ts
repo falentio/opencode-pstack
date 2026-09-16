@@ -38,6 +38,27 @@ test("parseAgentMarkdown returns raw text when no frontmatter", () => {
   assert.equal(out.prompt, "# Just a body");
 });
 
+test("parseAgentMarkdown keeps a colon inside a plain description", () => {
+  const out = parseAgentMarkdown("---\nname: a\ndescription: Reviews code: quality\n---\nBody.\n");
+  assert.equal(out.description, "Reviews code: quality");
+});
+
+test("parseAgentMarkdown strips matching quotes", () => {
+  const out = parseAgentMarkdown("---\ndescription: \"quoted: value\"\n---\nBody.\n");
+  assert.equal(out.description, "quoted: value");
+});
+
+test("parseAgentMarkdown rejects a block scalar instead of returning the marker", () => {
+  assert.throws(
+    () => parseAgentMarkdown("---\ndescription: >\n  folded text\n---\nBody.\n"),
+    /block scalar/,
+  );
+});
+
+test("parseAgentMarkdown rejects a flow collection", () => {
+  assert.throws(() => parseAgentMarkdown("---\ndescription: [a, b]\n---\nBody.\n"), /flow collection/);
+});
+
 test("loadCatalog finds the skills dir and both agents", () => {
   const catalog = loadCatalog(packageRoot);
   assert.ok(catalog.skillsDir.endsWith("skills"));

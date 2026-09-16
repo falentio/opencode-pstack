@@ -37,17 +37,28 @@ export function parseAgentMarkdown(markdown: string): AgentDef {
     const colon = line.indexOf(":");
     if (colon <= 0) continue;
     const key = line.slice(0, colon).trim();
-    const value = unquote(line.slice(colon + 1).trim());
+    const value = parseScalar(line.slice(colon + 1).trim(), key);
     if (key === "name") name = value;
     else if (key === "description") description = value;
   }
   return { name, description, prompt: lines.slice(bodyStart).join("\n").trim() };
 }
 
-function unquote(value: string): string {
-  const quote = value.charCodeAt(0);
-  if (value.length >= 2 && quote === value.charCodeAt(value.length - 1) && (quote === 34 || quote === 39)) {
-    return value.slice(1, -1);
+// The agent frontmatter is a fixed two-key block this package ships and
+// controls. Support the scalar forms those files use and reject the rest, so a
+// future edit that reaches for a block scalar or flow collection fails loudly
+// instead of registering a description that is literally ">".
+function parseScalar(raw: string, key: string): string {
+  if (raw === "") return "";
+  if (raw === ">" || raw === "|" || raw.startsWith(">") || raw.startsWith("|")) {
+    throw new Error(`agent frontmatter ${key} uses a block scalar, which this parser does not support`);
   }
-  return value;
+  if (raw.startsWith("[") || raw.startsWith("{")) {
+    throw new Error(`agent frontmatter ${key} uses a flow collection, which this parser does not support`);
+  }
+  const quote = raw.charCodeAt(0);
+  if (raw.length >= 2 && quote === raw.charCodeAt(raw.length - 1) && (quote === 34 || quote === 39)) {
+    return raw.slice(1, -1);
+  }
+  return raw;
 }
