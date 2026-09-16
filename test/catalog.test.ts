@@ -59,6 +59,13 @@ test("parseAgentMarkdown rejects a flow collection", () => {
   assert.throws(() => parseAgentMarkdown("---\ndescription: [a, b]\n---\nBody.\n"), /flow collection/);
 });
 
+test("parseAgentMarkdown rejects an indented plain-scalar continuation", () => {
+  assert.throws(
+    () => parseAgentMarkdown("---\ndescription: first line\n  second line\n---\nBody.\n"),
+    /multi-line plain scalar/,
+  );
+});
+
 test("parseAgentMarkdown ignores unknown keys that use unsupported scalar forms", () => {
   const out = parseAgentMarkdown(
     ["---", "name: a", "description: fine", "tools: { bash: false }", "---", "Body."].join("\n"),

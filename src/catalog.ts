@@ -28,16 +28,25 @@ export function parseAgentMarkdown(markdown: string): AgentDef {
   let name = "";
   let description = "";
   let bodyStart = lines.length;
+  let activeScalarKey: "name" | "description" | null = null;
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (line.trim() === "---") {
       bodyStart = i + 1;
       break;
     }
+    if (/^\s+\S/.test(line)) {
+      if (activeScalarKey) {
+        throw new Error(`agent frontmatter ${activeScalarKey} uses a multi-line plain scalar, which this parser does not support`);
+      }
+      continue;
+    }
+    activeScalarKey = null;
     const colon = line.indexOf(":");
     if (colon <= 0) continue;
     const key = line.slice(0, colon).trim();
     if (key !== "name" && key !== "description") continue;
+    activeScalarKey = key;
     const value = parseScalar(line.slice(colon + 1).trim(), key);
     if (key === "name") name = value;
     else description = value;

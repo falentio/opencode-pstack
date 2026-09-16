@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const mode = process.argv[2];
+const isCI = process.env.CI === "true";
 if (!["plugin", "manual", "none"].includes(mode)) {
   console.error("usage: node scripts/smoke.mjs <plugin|manual|none>");
   process.exit(2);
@@ -52,7 +53,7 @@ const finish = (code) => {
 
 server.on("error", (error) => {
   console.log(`smoke(${mode}): SKIP, ${error.code === "ENOENT" ? "opencode not on PATH" : error.message}`);
-  finish(0);
+  finish(isCI ? 1 : 0);
 });
 
 async function get(path) {
@@ -70,7 +71,7 @@ const skills = await get("/skill");
 const agents = await get("/agent");
 if (!skills) {
   console.log(`smoke(${mode}): SKIP, server did not start`);
-  finish(0);
+  finish(isCI ? 1 : 0);
 }
 
 const skillNames = skills.map((s) => s.name);
