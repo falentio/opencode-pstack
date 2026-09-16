@@ -10,11 +10,12 @@ const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 // opencode accepts a `skills.paths` array at runtime but the v1 Config type
 // does not declare it. Read it through one accessor so the gap lives here and
-// disappears when the upstream type catches up.
+// disappears when the upstream type catches up. A malformed `skills` value from
+// a hand-edited config is replaced rather than trusted.
 export function skillsPaths(config: Config): string[] {
   const holder = config as { skills?: { paths?: string[] } };
-  holder.skills ??= {};
-  holder.skills.paths ??= [];
+  if (typeof holder.skills !== "object" || holder.skills === null) holder.skills = {};
+  if (!Array.isArray(holder.skills.paths)) holder.skills.paths = [];
   return holder.skills.paths;
 }
 

@@ -21,3 +21,11 @@ test("skillsPaths preserves existing entries and returns the live array", () => 
   assert.deepEqual(paths, ["/a", "/b"]);
   assert.deepEqual((config as { skills: { paths: string[] } }).skills.paths, ["/a", "/b"]);
 });
+
+test("skillsPaths replaces a malformed skills value instead of trusting it", () => {
+  const asString = { skills: "foo" } as unknown as Config;
+  assert.deepEqual(skillsPaths(asString), []);
+
+  const badPaths = { skills: { paths: "x" } } as unknown as Config;
+  assert.deepEqual(skillsPaths(badPaths), []);
+});

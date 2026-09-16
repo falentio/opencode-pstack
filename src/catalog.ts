@@ -37,15 +37,16 @@ export function parseAgentMarkdown(markdown: string): AgentDef {
     const colon = line.indexOf(":");
     if (colon <= 0) continue;
     const key = line.slice(0, colon).trim();
+    if (key !== "name" && key !== "description") continue;
     const value = parseScalar(line.slice(colon + 1).trim(), key);
     if (key === "name") name = value;
-    else if (key === "description") description = value;
+    else description = value;
   }
   return { name, description, prompt: lines.slice(bodyStart).join("\n").trim() };
 }
 
-// The agent frontmatter is a fixed two-key block this package ships and
-// controls. Support the scalar forms those files use and reject the rest, so a
+// The agent frontmatter this package ships uses plain and quoted scalars.
+// Reject the other YAML scalar forms on the two keys this parser reads, so a
 // future edit that reaches for a block scalar or flow collection fails loudly
 // instead of registering a description that is literally ">".
 function parseScalar(raw: string, key: string): string {

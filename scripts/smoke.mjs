@@ -41,11 +41,19 @@ const server = spawn("opencode", ["serve", "--port", String(PORT)], {
   stdio: "ignore",
 });
 
+let exiting = false;
 const finish = (code) => {
+  if (exiting) return;
+  exiting = true;
   server.kill("SIGKILL");
   rmSync(sandbox, { recursive: true, force: true });
   process.exit(code);
 };
+
+server.on("error", (error) => {
+  console.log(`smoke(${mode}): SKIP, ${error.code === "ENOENT" ? "opencode not on PATH" : error.message}`);
+  finish(0);
+});
 
 async function get(path) {
   for (let i = 0; i < 60; i++) {

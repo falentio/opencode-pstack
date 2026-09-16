@@ -59,6 +59,14 @@ test("parseAgentMarkdown rejects a flow collection", () => {
   assert.throws(() => parseAgentMarkdown("---\ndescription: [a, b]\n---\nBody.\n"), /flow collection/);
 });
 
+test("parseAgentMarkdown ignores unknown keys that use unsupported scalar forms", () => {
+  const out = parseAgentMarkdown(
+    ["---", "name: a", "description: fine", "tools: { bash: false }", "---", "Body."].join("\n"),
+  );
+  assert.equal(out.name, "a");
+  assert.equal(out.description, "fine");
+});
+
 test("loadCatalog finds the skills dir and both agents", () => {
   const catalog = loadCatalog(packageRoot);
   assert.ok(catalog.skillsDir.endsWith("skills"));
