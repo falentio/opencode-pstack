@@ -55,6 +55,9 @@ const PstackPlugin: Plugin = async ({ client }) => {
       if (!evidence) return;
       output.system.push(buildResumeContext(evidence));
     },
+    async event({ event }) {
+      if (event.type === "session.deleted") pendingResume.delete(event.properties.info.id);
+    },
   };
 };
 
