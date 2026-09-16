@@ -97,7 +97,12 @@ pnpm check
 ```
 
 `pnpm check` runs typecheck, build, and the `node --test` suite against the
-bundled skills and agents.
+bundled skills and agents. It then runs `pnpm smoke`, which boots an isolated
+`opencode serve` and proves through its API that the plugin registers the
+skills and agents. `pnpm smoke` runs three modes: `none` (no config, nothing
+registered), `manual` (a `skills.paths` entry, skills only) and `plugin` (the
+plugin itself, skills and agents). It skips rather than fails when `opencode`
+is not on `PATH`.
 
 ## Release
 
