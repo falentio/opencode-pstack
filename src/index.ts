@@ -5,8 +5,7 @@ import type { Config, Plugin, PluginInput } from "@opencode-ai/plugin";
 import { loadCatalog } from "./catalog.ts";
 import { buildResumeContext, handleCompacting, takePendingResume, type PotetoEvidence } from "./poteto-compaction.ts";
 
-// dist/index.js sits one level under the package root.
-const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 // opencode accepts a `skills.paths` array at runtime but the v1 Config type
 // does not declare it. Read it through one accessor so the gap lives here and

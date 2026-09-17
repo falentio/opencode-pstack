@@ -57,8 +57,8 @@ agents. This plugin's `config` hook registers both programmatically:
 
 - `config.skills.paths` is extended with the package's `skills/` directory, so
   the native `skill` tool discovers every skill.
-- `config.agent` is extended with `poteto-agent` and `comment-sicko`, reading
-  each agent's `description` and body from the bundled markdown files.
+- `config.agent` is extended with `poteto-agent` and `comment-sicko`, using
+  each agent's description and prompt from its compiled agent module.
 
 The `config` hook is the only surface. It adds to the user's config; it never
 replaces existing skill paths or clobbers existing agents.

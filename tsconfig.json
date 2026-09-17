@@ -6,10 +6,10 @@
     "strict": true,
     "declaration": true,
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src", "agents"]
 }
