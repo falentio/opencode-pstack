@@ -86,11 +86,6 @@ test("valid plan passes with one report line", () => {
   assert.match(result.reportLines[0] ?? "", /boxes=20/);
 });
 
-test("built valid plan passes", () => {
-  const result = checkPlanContent(VALID_PLAN, "plan.md");
-  assert.deepEqual(result.problems, []);
-});
-
 test("missing H1 fails", () => {
   const broken = planWith(VALID_PR, "No title here");
   const result = checkPlanContent(broken, "plan.md");
@@ -129,20 +124,14 @@ test("missing verification rule fails each verify block", () => {
 });
 
 test("tool execute returns problems inline without throwing", async () => {
-  const broken = planWith(prBody({ gate: "- [ ] Attach screenshot" }));
+  const dir = mkdtempSync(join(tmpdir(), "poteto-plan-"));
+  writeFileSync(join(dir, "plan.md"), planWith(prBody({ gate: "- [ ] Attach screenshot" })), "utf8");
   const output = (await potetoCheckPlanTool.execute(
-    { content: broken },
-    { directory: "/tmp" } as never,
+    { path: "plan.md" },
+    { directory: dir } as never,
   )) as string;
   assert.match(output, /1 PR sections, 2 problems/);
   assert.match(output, /Review gate lacks/);
-});
-
-test("tool execute throws a user-facing error when neither path nor content given", async () => {
-  await assert.rejects(
-    potetoCheckPlanTool.execute({} as never, { directory: "/tmp" } as never),
-    /Provide either `path` or `content`/,
-  );
 });
 
 test("tool execute resolves a relative path against context directory", async () => {
@@ -153,4 +142,17 @@ test("tool execute resolves a relative path against context directory", async ()
     { directory: dir } as never,
   )) as string;
   assert.match(output, /1 PR sections, 0 problems/);
+});
+
+test("tool execute matches the legacy script on the same file", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const dir = mkdtempSync(join(tmpdir(), "poteto-plan-"));
+  writeFileSync(join(dir, "plan.md"), VALID_PLAN, "utf8");
+  const script = join(process.cwd(), "skills/poteto-mode/scripts/check-plan.mjs");
+  const legacy = execFileSync("node", [script, join(dir, "plan.md")], { encoding: "utf8" });
+  const output = (await potetoCheckPlanTool.execute(
+    { path: join(dir, "plan.md") },
+    { directory: dir } as never,
+  )) as string;
+  assert.equal(output.trim(), legacy.trim());
 });

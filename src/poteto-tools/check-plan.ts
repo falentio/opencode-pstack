@@ -2,26 +2,33 @@ import { readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import { tool, type ToolDefinition } from "@opencode-ai/plugin";
 
-export type PlanLine = {
+type PlanLine = {
   n: number;
   text: string;
   code: boolean;
 };
 
-export type PlanSection = {
+type PlanSection = {
   title: string;
   n: number;
   body: PlanLine[];
 };
 
-export type PlanBox = {
+type PlanBox = {
   n: number;
   text: string;
 };
 
-export type PlanDocument = {
+type PlanDocument = {
   lines: PlanLine[];
   sections: PlanSection[];
+};
+
+type PlanSubBlock = {
+  name: string;
+  n: number;
+  rest: string;
+  lines: PlanLine[];
 };
 
 export type CheckResult = {
@@ -29,9 +36,9 @@ export type CheckResult = {
   problems: string[];
 };
 
-const RULE =
+const VERIFICATION_RULE =
   "Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.";
-const LANES = "Ten lanes on the inherited parent model at the PR head";
+const LIVE_LANES_PHRASE = "Ten lanes on the inherited parent model at the PR head";
 const SUB_BLOCKS = [
   "Depends on.",
   "Files.",
@@ -50,12 +57,12 @@ const HOW_TO_READ_MARKERS = [
   "names the evidence",
   "Check a box only when its evidence exists",
   "playbooks/",
-  RULE,
+  VERIFICATION_RULE,
 ];
 const PERF_ITEMS = ["Metric.", "Probe.", "Baseline.", "Rule."];
-const BOX = /^\s*- \[[ x]\] (.*)$/;
+const CHECK_BOX_PATTERN = /^\s*- \[[ x]\] (.*)$/;
 
-export function parsePlanDocument(content: string): PlanDocument {
+function parsePlanDocument(content: string): PlanDocument {
   const raw = content.split(/\r?\n/);
   let start = 0;
   if (raw[0] === "---") {
@@ -86,8 +93,8 @@ function collectBoxes(ls: PlanLine[]): PlanBox[] {
   const out: PlanBox[] = [];
   for (const l of ls) {
     if (l.code) continue;
-    const m = l.text.match(BOX);
-    if (m && m[1] !== undefined) out.push({ n: l.n, text: m[1] });
+    const m = l.text.match(CHECK_BOX_PATTERN);
+    if (m?.[1] !== undefined) out.push({ n: l.n, text: m[1] });
   }
   return out;
 }
@@ -160,23 +167,21 @@ export function checkPlanContent(content: string, fileLabel: string): CheckResul
   const reportLines: string[] = [];
   for (const pr of prSections) {
     if (!pr) continue;
-    const heads: Array<{ name: string; n: number; rest: string; lines: PlanLine[] }> = [];
+    const heads: PlanSubBlock[] = [];
     for (const l of pr.body) {
       if (l.code) continue;
       const m = l.text.match(/^\*\*([^*]+)\*\*(.*)$/);
-      if (m && m[1] !== undefined && m[2] !== undefined && SUB_BLOCKS.includes(m[1])) {
+      if (m?.[1] !== undefined && m?.[2] !== undefined && SUB_BLOCKS.includes(m[1])) {
         heads.push({ name: m[1], n: l.n, rest: m[2].trim(), lines: [] });
       } else if (heads.length > 0) {
-        const last = heads[heads.length - 1];
-        if (last) last.lines.push(l);
+        heads[heads.length - 1]?.lines.push(l);
       }
     }
     const names = heads.map((h) => h.name);
     if (names.join("|") !== SUB_BLOCKS.join("|")) {
       fail(pr.n, `${pr.title}: sub-blocks are [${names.join(", ")}], expected [${SUB_BLOCKS.join(", ")}]`);
     }
-    const block = (name: string): { name: string; n: number; rest: string; lines: PlanLine[] } | undefined =>
-      heads.find((h) => h.name === name);
+    const block = (name: string): PlanSubBlock | undefined => heads.find((h) => h.name === name);
     const counts: Record<string, number> = {};
     for (const h of heads) counts[h.name] = collectBoxes(h.lines).length;
 
@@ -188,12 +193,12 @@ export function checkPlanContent(content: string, fileLabel: string): CheckResul
     }
     for (const name of ["Verify, unit.", "Verify, live.", "Verify, perf."]) {
       const b = block(name);
-      if (b && !b.rest.startsWith(RULE)) fail(b.n, `${pr.title}: ${name} does not open with the rule`);
+      if (b && !b.rest.startsWith(VERIFICATION_RULE)) fail(b.n, `${pr.title}: ${name} does not open with the rule`);
     }
 
     const live = block("Verify, live.");
     if (live) {
-      if (!live.rest.includes(LANES)) fail(live.n, `${pr.title}: Verify, live lacks "${LANES}"`);
+      if (!live.rest.includes(LIVE_LANES_PHRASE)) fail(live.n, `${pr.title}: Verify, live lacks "${LIVE_LANES_PHRASE}"`);
       const lanes = collectBoxes(live.lines).map((b) => ({ ...b, m: b.text.match(/^Lane (\d+)\. /) }));
       const numbers = lanes
         .filter((b) => b.m)
@@ -249,29 +254,21 @@ export function checkPlanContent(content: string, fileLabel: string): CheckResul
 }
 
 export const potetoCheckPlanTool: ToolDefinition = tool({
-  description: "Check a poteto multi-phase plan for required shape, verification rule, lanes, perf items, and review gates.",
+  description:
+    "Check a poteto multi-phase plan file for required shape, verification rule, lanes, perf items, and review gates. Reports problems inline; a non-zero problem count means the plan failed.",
   args: {
-    path: tool.schema.string().optional(),
-    content: tool.schema.string().optional(),
+    path: tool.schema.string().describe("Plan markdown path, absolute or relative to the session directory."),
   },
   execute: async (args, context) => {
-    if (args.path === undefined && args.content === undefined) {
-      throw new Error("Provide either `path` or `content` for the plan to check.");
-    }
-    const fileLabel = args.path ?? "content";
+    const rawPath = args.path;
+    const resolved = isAbsolute(rawPath) ? rawPath : resolve(context.directory, rawPath);
     let text: string;
-    if (args.content !== undefined) {
-      text = args.content;
-    } else {
-      const rawPath = args.path as string;
-      const resolved = isAbsolute(rawPath) ? rawPath : resolve(context.directory, rawPath);
-      try {
-        text = readFileSync(resolved, "utf8");
-      } catch {
-        throw new Error(`Cannot read plan file at ${resolved}.`);
-      }
+    try {
+      text = readFileSync(resolved, "utf8");
+    } catch {
+      throw new Error(`Cannot read plan file at ${resolved}.`);
     }
-    const result = checkPlanContent(text, fileLabel);
+    const result = checkPlanContent(text, args.path);
     const summary = `${result.reportLines.length} PR sections, ${result.problems.length} problems`;
     return [...result.reportLines, summary, ...result.problems].join("\n");
   },
