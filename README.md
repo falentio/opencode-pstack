@@ -60,8 +60,20 @@ agents. This plugin's `config` hook registers both programmatically:
 - `config.agent` is extended with `poteto-agent` and `comment-sicko`, using
   each agent's description and prompt from its compiled agent module.
 
-The `config` hook is the only surface. It adds to the user's config; it never
-replaces existing skill paths or clobbers existing agents.
+The plugin also registers native `poteto_*` tools through the `tool` hook, so
+playbooks call tools instead of shelling to scripts:
+
+- `poteto_check_plan` checks a multi-phase plan file.
+- `poteto_orch_*` (20 tools) manages the orchestrate store: init, units,
+  ledger, inbox, gates, frontier, status, standing orders.
+- `poteto_watch_pr_status`, `poteto_watch_pr_stack`, and
+  `poteto_watch_pr_classify` read PR state single-shot. Callers re-invoke
+  them to poll.
+- `poteto_worktree_audit` lists non-main worktrees as TSV.
+
+The hooks only add to the user's config. They never replace existing skill
+paths or clobber existing agents. `scripts/smoke.mjs` stays as the dev-only
+server probe behind `pnpm smoke`. It has no tool home.
 
 ## Differences from the Cursor plugin
 

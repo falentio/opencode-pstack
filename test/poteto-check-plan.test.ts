@@ -144,15 +144,13 @@ test("tool execute resolves a relative path against context directory", async ()
   assert.match(output, /1 PR sections, 0 problems/);
 });
 
-test("tool execute matches the legacy script on the same file", async () => {
-  const { execFileSync } = await import("node:child_process");
+test("tool execute reports the valid plan shape", async () => {
   const dir = mkdtempSync(join(tmpdir(), "poteto-plan-"));
   writeFileSync(join(dir, "plan.md"), VALID_PLAN, "utf8");
-  const script = join(process.cwd(), "skills/poteto-mode/scripts/check-plan.mjs");
-  const legacy = execFileSync("node", [script, join(dir, "plan.md")], { encoding: "utf8" });
   const output = (await potetoCheckPlanTool.execute(
     { path: join(dir, "plan.md") },
     { directory: dir } as never,
   )) as string;
-  assert.equal(output.trim(), legacy.trim());
+  assert.match(output, /PR1 Slice\s+boxes=20/);
+  assert.match(output, /1 PR sections, 0 problems/);
 });
