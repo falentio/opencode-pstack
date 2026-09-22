@@ -1,0 +1,15 @@
+[0m
+> build · big-pickle
+[0m
+[0m⚙ [0mpoteto_orch_unit_add {"store":"disabled-test-store-xyz","id":"u1","track":"t1","brief":"test unit"}
+[0m⚙ [0mpoteto_orch_unit_get {"store":"disabled-test-store-xyz","id":"u1"}
+[0m⚙ [0mpoteto_orch_status {"store":"disabled-test-store-xyz"}
+```
+u1	t1	pending				test unit
+---
+u1	t1	pending				test unit
+---
+counts: units=1; states=pending=1; ledger=none
+changed: first render
+gates open: 0
+```

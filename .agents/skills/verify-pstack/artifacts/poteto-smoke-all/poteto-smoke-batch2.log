@@ -1,0 +1,29 @@
+[0m
+> build · big-pickle
+[0m
+[0m⚙ [0mpoteto_orch_ledger_record {"store":"s1","pr":1,"sha":"abc123","verdict":"unit-test-verified","evidence":"smoke.log"}
+[0m⚙ [0mpoteto_orch_ledger_check {"store":"s1","pr":1,"sha":"abc123"}
+[0m⚙ [0mpoteto_orch_ledger_summary {"store":"s1"}
+[0m⚙ [0mpoteto_orch_inbox_push {"store":"s1","agent":"smoke-agent","unit":"u1","status":"done"}
+[0m⚙ [0mpoteto_orch_inbox_count {"store":"s1"}
+[0m⚙ [0mpoteto_orch_inbox_drain {"store":"s1","peek":true}
+[0m⚙ [0mpoteto_orch_standing_add {"store":"s1","line":"Never force-push."}
+[0m⚙ [0mpoteto_orch_standing_show {"store":"s1"}
+[0m⚙ [0mpoteto_orch_gate_park {"store":"s1","id":"g1","question":"Ship question","options":"ship-wait","defaultAnswer":"wait"}
+[0m⚙ [0mpoteto_orch_gate_list {"store":"s1"}
+[0m⚙ [0mpoteto_orch_gate_resolve {"store":"s1","id":"g1","answer":"wait"}
+[0m⚙ [0mpoteto_orch_status {"store":"s1"}
+poteto_orch_ledger_record: 1	abc123	unit-test-verified
+poteto_orch_ledger_check: unit-test-verified
+poteto_orch_ledger_summary: unit-test-verified=1
+poteto_orch_inbox_push: u1	done	2026-09-22T07-15-01-499Z-2165312-9c859429-fda8-4b64-9743-c893c0f08815.tsv
+poteto_orch_inbox_count: 1
+poteto_orch_inbox_drain: 2026-09-22T07:15:01.499Z	smoke-agent	u1	done	
+poteto_orch_standing_add: 1. Never force-push.
+poteto_orch_standing_show: 1. Never force-push.
+poteto_orch_gate_park: g1	open
+poteto_orch_gate_list: g1	Ship question	ship-wait	wait
+poteto_orch_gate_resolve: g1	resolved	wait
+poteto_orch_status: counts: units=1; states=active=1; ledger=unit-test-verified=1
+changed: first render
+gates open: 0

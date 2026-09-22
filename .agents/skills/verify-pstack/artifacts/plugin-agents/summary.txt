@@ -1,0 +1,1 @@
+poteto-agent mode=subagent, comment-sicko mode=subagent, negative-control=no-such-agent not found, rev=d67c88f

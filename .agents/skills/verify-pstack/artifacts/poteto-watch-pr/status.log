@@ -1,0 +1,5 @@
+[0m
+> build · big-pickle
+[0m
+[0m⚙ [0mpoteto_watch_pr_status Unknown
+{"schemaVersion":1,"sequence":1,"observedAt":"2026-09-22T06:19:55.996Z","mode":"single","kind":"BLOCKER","terminal":true,"exitCode":7,"blocker":{"kind":"status-query","failures":1,"failure":{"kind":"command-exit","retryable":true,"code":4,"detail":"To get started with GitHub CLI, please run:  gh auth login"}}}

@@ -1,0 +1,6 @@
+[0m
+> build · big-pickle
+[0m
+[0m✗ [0mpoteto_watch_pr_classify {"owner":"octo","repo":"hello","pr":0} failed
+[91m[1mError: [0mPR number must be a positive integer
+PR number must be a positive integer

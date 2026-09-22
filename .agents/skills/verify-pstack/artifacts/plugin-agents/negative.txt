@@ -1,0 +1,1 @@
+Agent no-such-agent not found, run 'opencode agent list' to get an agent list

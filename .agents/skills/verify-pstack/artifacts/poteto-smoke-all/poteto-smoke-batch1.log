@@ -1,0 +1,15 @@
+[0m
+> build · big-pickle
+[0m
+[0m⚙ [0mpoteto_orch_init {"store":"s1"}
+[0m⚙ [0mpoteto_orch_unit_add {"store":"s1","id":"u1","track":"t1","brief":"smoke"}
+[0m⚙ [0mpoteto_orch_unit_set {"store":"s1","id":"u1","state":"active","branch":"feat/u1","pr":1,"sha":"abc123"}
+[0m⚙ [0mpoteto_orch_unit_get {"store":"s1","id":"u1"}
+[0m⚙ [0mpoteto_orch_unit_list {"store":"s1"}
+[0m⚙ [0mpoteto_orch_unit_counts {"store":"s1"}
+poteto_orch_init: initialized /tmp/pstack-verify-z46nWl/s1
+poteto_orch_unit_add: u1	t1	pending				smoke
+poteto_orch_unit_set: u1	t1	active	feat/u1	1	abc123	smoke
+poteto_orch_unit_get: u1	t1	active	feat/u1	1	abc123	smoke
+poteto_orch_unit_list: u1	t1	active	feat/u1	1	abc123	smoke
+poteto_orch_unit_counts: active=1

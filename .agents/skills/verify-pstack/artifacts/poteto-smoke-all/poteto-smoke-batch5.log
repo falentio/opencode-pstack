@@ -1,0 +1,9 @@
+[0m
+> build · big-pickle
+[0m
+[0m⚙ [0mpoteto_orch_inbox_drain {"store":"s1"}
+[0m⚙ [0mpoteto_orch_inbox_count {"store":"s1"}
+[0m⚙ [0mpoteto_orch_status {"store":"s1"}
+poteto_orch_inbox_drain: `2026-09-22T07:15:01.499Z	smoke-agent	u1	done`
+poteto_orch_inbox_count: `0`
+poteto_orch_status: `counts: units=1; states=active=1; ledger=unit-test-verified=1; changed: frontier generation 0->1; gates open: 0`

@@ -1,0 +1,1 @@
+51 skills, poteto-mode present at /home/kevin/Repositories/opencode-pstack/skills/poteto-mode/SKILL.md, config=local checkout, rev=d67c88f

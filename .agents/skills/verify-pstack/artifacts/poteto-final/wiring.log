@@ -1,0 +1,15 @@
+[0m
+> build · big-pickle
+[0m
+[0m✗ [0mpoteto_check_plan {"path":"README.md"} failed
+[91m[1mError: [0mCannot read plan file at /tmp/pstack-verify-k0zL4c/README.md.
+[0m✗ [0mpoteto_orch_status {"store":"final-verify-store"} failed
+[91m[1mError: [0mstore is not initialized at /tmp/pstack-verify-k0zL4c/final-verify-store; run orch init
+[0m✗ [0mpoteto_worktree_audit {"repo":"/tmp/pstack-verify-k0zL4c"} failed
+[91m[1mError: [0mnot in a git repo; pass a repo path
+[0m✗ [0mpoteto_watch_pr_classify {"owner":"o","repo":"r","pr":0} failed
+[91m[1mError: [0mPR number must be a positive integer
+- `poteto_check_plan`: Cannot read plan file at /tmp/pstack-verify-k0zL4c/README.md.
+- `poteto_orch_status`: store is not initialized at /tmp/pstack-verify-k0zL4c/final-verify-store; run orch init.
+- `poteto_worktree_audit`: not in a git repo; pass a repo path.
+- `poteto_watch_pr_classify`: PR number must be a positive integer.

@@ -1,0 +1,41 @@
+Already up to date
+Done in 873ms using pnpm v11.18.0
+$ node --test 'test/*.test.ts' -- test/poteto-compaction.test.ts
+✔ loadCatalog finds the skills dir and both agents (20.183109ms)
+✔ loadCatalog works without agent files (0.806077ms)
+✔ agents are TypeScript modules (0.651835ms)
+✔ every skill frontmatter name matches its directory name (5.928122ms)
+✔ session.deleted drops the pending resume for that session (4.51919ms)
+✔ a live session still receives the resume note (0.786921ms)
+✔ findPotetoEvidence matches a slash command (2.612957ms)
+✔ findPotetoEvidence matches the expanded skill content without a slash (0.593828ms)
+✔ findPotetoEvidence rejects compact and longer slash command names (0.390705ms)
+✔ findPotetoEvidence ignores mere discussion without a slash (0.300761ms)
+✔ findPotetoEvidence ignores assistant slash text (0.252262ms)
+✔ findPotetoEvidence ignores a slash command with same-message opt out (3.720096ms)
+✔ findPotetoEvidence keeps expanded skill content whose instruction says stop (0.519121ms)
+✔ findPotetoEvidence matches a skill call for poteto-mode (0.502461ms)
+✔ findPotetoEvidence reads serialized exact skill input (0.651584ms)
+✔ findPotetoEvidence ignores a skill call for another skill (1.050054ms)
+✔ findPotetoEvidence matches a task spawn for poteto-agent (1.218662ms)
+✔ findPotetoEvidence ignores a task spawn for another agent (0.486642ms)
+✔ findPotetoEvidence returns the first hit in order (0.345162ms)
+✔ findPotetoEvidence caps the scan at 300 messages (2.623778ms)
+✔ findPotetoEvidence stays closed on malformed shapes (0.481552ms)
+✔ buildResumeContext names the kind, orders re-invocation, and keeps the pickup path (1.666162ms)
+✔ handleCompacting returns the found evidence and pushes one entry (0.530272ms)
+✔ handleCompacting returns null when no evidence exists (1.186805ms)
+✔ handleCompacting fails closed when message fetch throws (0.989293ms)
+✔ takePendingResume is one-shot per session (0.361442ms)
+✔ skillsPaths creates the holder when skills is absent (2.605714ms)
+✔ skillsPaths creates paths when skills exists without paths (0.427172ms)
+✔ skillsPaths preserves existing entries and returns the live array (0.249316ms)
+✔ skillsPaths replaces a malformed skills value instead of trusting it (0.342257ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 321.318415

@@ -1,0 +1,10 @@
+[0m
+> build · big-pickle
+[0m
+[0m⚙ [0mpoteto_orch_init {"store":"verify-store"}
+[0m⚙ [0mpoteto_orch_unit_add {"store":"verify-store","id":"u1","track":"t1","brief":"verify unit"}
+[0m⚙ [0mpoteto_orch_status {"store":"verify-store"}
+[0m⚙ [0mpoteto_worktree_audit {"repo":"/home/kevin/Repositories/opencode-pstack"}
+counts: units=1; states=pending=1; ledger=none
+
+SIZE	AGE	MERGED	DIRTY	REMOTE	PR	LAST_CHAT	BUCKET	WORKTREE
