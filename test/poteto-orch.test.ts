@@ -4,15 +4,34 @@ import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openStore, UserError, NotFoundError } from "../src/poteto-tools/orch-store.ts";
-import { potetoOrchTools } from "../src/poteto-tools/orch-tools.ts";
+import { buildOrchTools } from "../src/poteto-tools/orch-tools.ts";
+import { staticSessionDir } from "../src/poteto-tools/session-dir.ts";
 
 function freshDir(): string {
   return mkdtempSync(join(tmpdir(), "poteto-orch-"));
 }
 
-function ctx(dir: string): never {
-  return { directory: dir } as never;
+function ctx(dir: string) {
+  return { dir, sessionID: "test" };
 }
+
+type Ctx = ReturnType<typeof ctx>;
+
+async function dispatch(name: string, args: unknown, context: Ctx): Promise<string> {
+  const tool = buildOrchTools({ sessionDir: staticSessionDir(context.dir) }).find((t) => t.name === name);
+  if (!tool) throw new Error(`unknown tool ${name}`);
+  const out = (await tool.execute(args, { sessionID: context.sessionID })) as { content: string };
+  return out.content;
+}
+
+const potetoOrchTools: Record<string, { execute: (args: unknown, context: Ctx) => Promise<string> }> = new Proxy(
+  {},
+  {
+    get: (_target, name: string) => ({
+      execute: (args: unknown, context: Ctx) => dispatch(name, args, context),
+    }),
+  },
+);
 
 async function initStore(dir: string, name = "store"): Promise<string> {
   const out = (await potetoOrchTools["poteto_orch_init"]!.execute(

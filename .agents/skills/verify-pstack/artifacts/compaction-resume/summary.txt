@@ -1,1 +1,1 @@
-unit matrix: 30 pass 0 fail (full suite incl. poteto-compaction); live compaction leg verified-unreachable (headless run exposes no deterministic compact trigger); rev=d67c88f
+unit matrix: 22 pass 0 fail; live compaction leg verified-unreachable (tiny session skips summarization so the compaction hook never fires; resume sentence absent from export); root=/tmp/pstack-verify-ixIKFx

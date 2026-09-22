@@ -1,1 +1,2 @@
-marker PSTACK-VERIFY-OK present once, run exit 0, run-root=/tmp/pstack-verify-Lx1Arq, rev=d67c88f
+PSTACK-VERIFY-OK
+root=/tmp/pstack-verify-Fea7th rev=f705a33-dirty model=9router/deepseek

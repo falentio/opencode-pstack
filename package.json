@@ -51,7 +51,7 @@
     "subagents"
   ],
   "dependencies": {
-    "@opencode-ai/plugin": "1.18.25"
+    "@opencode/plugin": "2.0.12"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

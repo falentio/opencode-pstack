@@ -1,5 +1,5 @@
 import { isAbsolute, resolve } from "node:path";
-import { tool, type ToolContext, type ToolDefinition } from "@opencode-ai/plugin";
+import type { SessionDir } from "./session-dir.ts";
 import {
   NotFoundError,
   UserError,
@@ -104,13 +104,13 @@ function resolveStore(raw: string, directory: string): string {
 }
 
 async function withStore<T>(
-  context: ToolContext,
+  directory: string,
   storePath: string,
   operation: (store: Store) => Promise<T>,
   compact: (result: T) => string,
 ): Promise<string> {
   const notices: string[] = [];
-  const store = openStore(resolveStore(storePath, context.directory), {
+  const store = openStore(resolveStore(storePath, directory), {
     force: process.env["POTETO_ORCH_FORCE"] === "1",
     onLockStolen: (holder) => void notices.push(`notice: stealing store lock held by pid ${holder}`),
     onStaleLock: (holder) => void notices.push(`notice: replacing stale store lock (pid ${holder} is dead)`),
@@ -138,310 +138,462 @@ function parsePrPin(value: string): readonly number[] {
   });
 }
 
-const storeArg = {
-  store: tool.schema.string().describe("Store directory, absolute or relative to the session directory."),
-};
+const storeProp = { type: "string", description: "Store directory, absolute or relative to the session directory." };
+const strProp = (description: string) => ({ type: "string", description });
+const optStrProp = (description: string) => ({ type: "string", description });
+const prNumProp = { type: "integer", minimum: 1 };
 
-export const potetoOrchInitTool: ToolDefinition = tool({
-  description: "Initialize a poteto orchestrate store directory.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(context, args.store, (store) => store.init(), (result) => `initialized ${result.store}`),
-});
+function objInput(properties: Record<string, unknown>, required: string[]) {
+  return { type: "object", properties, required, additionalProperties: false };
+}
 
-export const potetoOrchUnitAddTool: ToolDefinition = tool({
-  description: "Add a work unit to the orchestrate store.",
-  args: {
-    ...storeArg,
-    id: tool.schema.string().describe("Unit id."),
-    track: tool.schema.string().describe("Unit track."),
-    brief: tool.schema.string().optional().describe("Short brief."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => store.units.add({ id: args.id, track: args.track, brief: args.brief }),
-      unitLine,
+type ToolCtx = { sessionID: string };
+
+async function dirOf(deps: { sessionDir: SessionDir }, context: ToolCtx): Promise<string> {
+  return deps.sessionDir(context.sessionID);
+}
+
+export function buildOrchInitTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_init",
+    description: "Initialize a poteto orchestrate store directory.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return { content: await withStore(directory, input.store, (store) => store.init(), (result) => `initialized ${result.store}`) };
+    },
+  };
+}
+
+export function buildOrchUnitAddTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_unit_add",
+    description: "Add a work unit to the orchestrate store.",
+    input: objInput({ store: storeProp, id: strProp("Unit id."), track: strProp("Unit track."), brief: optStrProp("Short brief.") }, ["store", "id", "track"]),
+    async execute(input: { store: string; id: string; track: string; brief?: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => store.units.add({ id: input.id, track: input.track, brief: input.brief }),
+          unitLine,
+        ),
+      };
+    },
+  };
+}
+
+export function buildOrchUnitSetTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_unit_set",
+    description: "Update a work unit state, branch, PR, or SHA.",
+    input: objInput(
+      {
+        store: storeProp,
+        id: strProp("Unit id."),
+        state: strProp("New state."),
+        branch: optStrProp("Branch name."),
+        pr: { ...prNumProp, description: "Pull request number." },
+        sha: optStrProp("Commit SHA."),
+      },
+      ["store", "id", "state"],
     ),
-});
+    async execute(
+      input: { store: string; id: string; state: string; branch?: string; pr?: number; sha?: string },
+      context: ToolCtx,
+    ) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) =>
+            store.units.set({ id: input.id, state: input.state, branch: input.branch, pr: input.pr, sha: input.sha }),
+          unitLine,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchUnitSetTool: ToolDefinition = tool({
-  description: "Update a work unit state, branch, PR, or SHA.",
-  args: {
-    ...storeArg,
-    id: tool.schema.string().describe("Unit id."),
-    state: tool.schema.string().describe("New state."),
-    branch: tool.schema.string().optional().describe("Branch name."),
-    pr: tool.schema.number().int().min(1).optional().describe("Pull request number."),
-    sha: tool.schema.string().optional().describe("Commit SHA."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) =>
-        store.units.set({ id: args.id, state: args.state, branch: args.branch, pr: args.pr, sha: args.sha }),
-      unitLine,
+export function buildOrchUnitGetTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_unit_get",
+    description: "Get one work unit by id.",
+    input: objInput({ store: storeProp, id: strProp("Unit id.") }, ["store", "id"]),
+    async execute(input: { store: string; id: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return { content: await withStore(directory, input.store, (store) => store.units.get(input.id), unitLine) };
+    },
+  };
+}
+
+export function buildOrchUnitListTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_unit_list",
+    description: "List work units, optionally filtered by state or track.",
+    input: objInput(
+      {
+        store: storeProp,
+        state: optStrProp("Filter by state."),
+        track: optStrProp("Filter by track."),
+        limit: { type: "integer", minimum: 1, description: "Max rows before truncating with a more-hint." },
+      },
+      ["store"],
     ),
-});
+    async execute(input: { store: string; state?: string; track?: string; limit?: number }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => store.units.list({ state: input.state, track: input.track }),
+          (rows) => compactRows(rows, unitLine, "(no units)", input.limit ?? DISPLAY_LIMIT),
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchUnitGetTool: ToolDefinition = tool({
-  description: "Get one work unit by id.",
-  args: {
-    ...storeArg,
-    id: tool.schema.string().describe("Unit id."),
-  },
-  execute: async (args, context) =>
-    withStore(context, args.store, (store) => store.units.get(args.id), unitLine),
-});
+export function buildOrchUnitCountsTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_unit_counts",
+    description: "Count work units by state.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return { content: await withStore(directory, input.store, (store) => store.units.counts(), countLine) };
+    },
+  };
+}
 
-export const potetoOrchUnitListTool: ToolDefinition = tool({
-  description: "List work units, optionally filtered by state or track.",
-  args: {
-    ...storeArg,
-    state: tool.schema.string().optional().describe("Filter by state."),
-    track: tool.schema.string().optional().describe("Filter by track."),
-    limit: tool.schema.number().int().min(1).optional().describe("Max rows before truncating with a more-hint."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => store.units.list({ state: args.state, track: args.track }),
-      (rows) => compactRows(rows, unitLine, "(no units)", args.limit ?? DISPLAY_LIMIT),
+export function buildOrchLedgerRecordTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_ledger_record",
+    description: "Record a verification verdict for a PR at a SHA.",
+    input: objInput(
+      {
+        store: storeProp,
+        pr: { ...prNumProp, description: "Pull request number." },
+        sha: strProp("Commit SHA."),
+        verdict: strProp("One of live-ui-verified, unit-test-verified, type-check-only, verifier-blocked, verifier-failed."),
+        evidence: strProp("Evidence path or note."),
+        verifier: optStrProp("Verifier name."),
+      },
+      ["store", "pr", "sha", "verdict", "evidence"],
     ),
-});
+    async execute(
+      input: { store: string; pr: number; sha: string; verdict: string; evidence: string; verifier?: string },
+      context: ToolCtx,
+    ) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) =>
+            store.ledger.record({
+              pr: input.pr,
+              sha: input.sha,
+              verdict: input.verdict as Verdict,
+              evidence: input.evidence,
+              verifier: input.verifier,
+            }),
+          (row) => `${row.pr}\t${row.sha}\t${row.verdict}`,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchUnitCountsTool: ToolDefinition = tool({
-  description: "Count work units by state.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(context, args.store, (store) => store.units.counts(), countLine),
-});
-
-export const potetoOrchLedgerRecordTool: ToolDefinition = tool({
-  description: "Record a verification verdict for a PR at a SHA.",
-  args: {
-    ...storeArg,
-    pr: tool.schema.number().int().min(1).describe("Pull request number."),
-    sha: tool.schema.string().describe("Commit SHA."),
-    verdict: tool.schema.string().describe("One of live-ui-verified, unit-test-verified, type-check-only, verifier-blocked, verifier-failed."),
-    evidence: tool.schema.string().describe("Evidence path or note."),
-    verifier: tool.schema.string().optional().describe("Verifier name."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) =>
-        store.ledger.record({
-          pr: args.pr,
-          sha: args.sha,
-          verdict: args.verdict as Verdict,
-          evidence: args.evidence,
-          verifier: args.verifier,
-        }),
-      (row) => `${row.pr}\t${row.sha}\t${row.verdict}`,
+export function buildOrchLedgerCheckTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_ledger_check",
+    description: "Check the verification verdict for a PR at a SHA. Returns NOT-VERIFIED when absent.",
+    input: objInput(
+      { store: storeProp, pr: { ...prNumProp, description: "Pull request number." }, sha: strProp("Commit SHA.") },
+      ["store", "pr", "sha"],
     ),
-});
+    async execute(input: { store: string; pr: number; sha: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => store.ledger.check({ pr: input.pr, sha: input.sha }),
+          (row) => row.verdict,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchLedgerCheckTool: ToolDefinition = tool({
-  description: "Check the verification verdict for a PR at a SHA. Returns NOT-VERIFIED when absent.",
-  args: {
-    ...storeArg,
-    pr: tool.schema.number().int().min(1).describe("Pull request number."),
-    sha: tool.schema.string().describe("Commit SHA."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => store.ledger.check({ pr: args.pr, sha: args.sha }),
-      (row) => row.verdict,
+export function buildOrchLedgerSummaryTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_ledger_summary",
+    description: "Count verification verdicts.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return { content: await withStore(directory, input.store, (store) => store.ledger.summary(), countLine) };
+    },
+  };
+}
+
+export function buildOrchInboxPushTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_inbox_push",
+    description: "Push an agent status pointer into the inbox.",
+    input: objInput(
+      {
+        store: storeProp,
+        agent: strProp("Agent name."),
+        unit: strProp("Unit id."),
+        status: strProp("Status text."),
+        report: optStrProp("Report path or note."),
+      },
+      ["store", "agent", "unit", "status"],
     ),
-});
+    async execute(
+      input: { store: string; agent: string; unit: string; status: string; report?: string },
+      context: ToolCtx,
+    ) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) =>
+            store.inbox.push({ agent: input.agent, unit: input.unit, status: input.status, report: input.report }),
+          (result) => `${result.pointer.unit}\t${result.pointer.status}\t${result.filename}`,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchLedgerSummaryTool: ToolDefinition = tool({
-  description: "Count verification verdicts.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(context, args.store, (store) => store.ledger.summary(), countLine),
-});
-
-export const potetoOrchInboxPushTool: ToolDefinition = tool({
-  description: "Push an agent status pointer into the inbox.",
-  args: {
-    ...storeArg,
-    agent: tool.schema.string().describe("Agent name."),
-    unit: tool.schema.string().describe("Unit id."),
-    status: tool.schema.string().describe("Status text."),
-    report: tool.schema.string().optional().describe("Report path or note."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) =>
-        store.inbox.push({ agent: args.agent, unit: args.unit, status: args.status, report: args.report }),
-      (result) => `${result.pointer.unit}\t${result.pointer.status}\t${result.filename}`,
+export function buildOrchInboxDrainTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_inbox_drain",
+    description: "Drain inbox pointers, or peek without draining when peek is true.",
+    input: objInput(
+      { store: storeProp, peek: { type: "boolean", description: "Read without draining." } },
+      ["store"],
     ),
-});
+    async execute(input: { store: string; peek?: boolean }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => (input.peek === true ? store.inbox.peek() : store.inbox.drain()),
+          (rows) => compactRows(rows, pointerLine, "(empty)", null),
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchInboxDrainTool: ToolDefinition = tool({
-  description: "Drain inbox pointers, or peek without draining when peek is true.",
-  args: {
-    ...storeArg,
-    peek: tool.schema.boolean().optional().describe("Read without draining."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => (args.peek === true ? store.inbox.peek() : store.inbox.drain()),
-      (rows) => compactRows(rows, pointerLine, "(empty)", null),
+export function buildOrchInboxCountTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_inbox_count",
+    description: "Count inbox pointers.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return { content: await withStore(directory, input.store, (store) => store.inbox.count(), String) };
+    },
+  };
+}
+
+export function buildOrchGateParkTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_gate_park",
+    description: "Park an open decision gate.",
+    input: objInput(
+      {
+        store: storeProp,
+        id: strProp("Gate id."),
+        question: strProp("Gate question."),
+        options: strProp("Gate options."),
+        defaultAnswer: strProp("Default answer."),
+      },
+      ["store", "id", "question", "options", "defaultAnswer"],
     ),
-});
+    async execute(
+      input: { store: string; id: string; question: string; options: string; defaultAnswer: string },
+      context: ToolCtx,
+    ) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) =>
+            store.gates.park({
+              id: input.id,
+              question: input.question,
+              options: input.options,
+              defaultAnswer: input.defaultAnswer,
+            }),
+          (result) => `${result.id}\topen`,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchInboxCountTool: ToolDefinition = tool({
-  description: "Count inbox pointers.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(context, args.store, (store) => store.inbox.count(), String),
-});
-
-export const potetoOrchGateParkTool: ToolDefinition = tool({
-  description: "Park an open decision gate.",
-  args: {
-    ...storeArg,
-    id: tool.schema.string().describe("Gate id."),
-    question: tool.schema.string().describe("Gate question."),
-    options: tool.schema.string().describe("Gate options."),
-    defaultAnswer: tool.schema.string().describe("Default answer."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) =>
-        store.gates.park({
-          id: args.id,
-          question: args.question,
-          options: args.options,
-          defaultAnswer: args.defaultAnswer,
-        }),
-      (result) => `${result.id}\topen`,
+export function buildOrchGateResolveTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_gate_resolve",
+    description: "Resolve an open decision gate with the chosen answer.",
+    input: objInput(
+      { store: storeProp, id: strProp("Gate id."), answer: strProp("Chosen answer.") },
+      ["store", "id", "answer"],
     ),
-});
+    async execute(input: { store: string; id: string; answer: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => store.gates.resolve({ id: input.id, answer: input.answer }),
+          (result) => `${result.id}\tresolved\t${result.answer}`,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchGateResolveTool: ToolDefinition = tool({
-  description: "Resolve an open decision gate with the chosen answer.",
-  args: {
-    ...storeArg,
-    id: tool.schema.string().describe("Gate id."),
-    answer: tool.schema.string().describe("Chosen answer."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => store.gates.resolve({ id: args.id, answer: args.answer }),
-      (result) => `${result.id}\tresolved\t${result.answer}`,
+export function buildOrchGateListTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_gate_list",
+    description: "List open decision gates.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => store.gates.list(),
+          (rows) => compactRows(rows, gateLine, "(no open gates)"),
+        ),
+      };
+    },
+  };
+}
+
+export function buildOrchFrontierSetTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_frontier_set",
+    description: "Discover stacked PRs via gh in repo and set the frontier. Optional prs pin is a comma-separated PR list.",
+    input: objInput(
+      { store: storeProp, repo: strProp("Repository directory."), prs: optStrProp("Comma-separated expected PR order pin.") },
+      ["store", "repo"],
     ),
-});
+    async execute(input: { store: string; repo: string; prs?: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) =>
+            store.frontier.set({
+              repo: resolveStore(input.repo, directory),
+              prs: input.prs === undefined ? undefined : parsePrPin(input.prs),
+            }),
+          frontierLine,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchGateListTool: ToolDefinition = tool({
-  description: "List open decision gates.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => store.gates.list(),
-      (rows) => compactRows(rows, gateLine, "(no open gates)"),
-    ),
-});
+export function buildOrchFrontierShowTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_frontier_show",
+    description: "Show the current stack frontier.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return { content: await withStore(directory, input.store, (store) => store.frontier.show(), frontierLine) };
+    },
+  };
+}
 
-export const potetoOrchFrontierSetTool: ToolDefinition = tool({
-  description: "Discover stacked PRs via gh in repo and set the frontier. Optional prs pin is a comma-separated PR list.",
-  args: {
-    ...storeArg,
-    repo: tool.schema.string().describe("Repository directory."),
-    prs: tool.schema.string().optional().describe("Comma-separated expected PR order pin."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) =>
-        store.frontier.set({
-          repo: resolveStore(args.repo, context.directory),
-          prs: args.prs === undefined ? undefined : parsePrPin(args.prs),
-        }),
-      frontierLine,
-    ),
-});
+export function buildOrchStatusTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_status",
+    description: "Render status.md and print the summary counts, change text, and open gates.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return { content: await withStore(directory, input.store, (store) => store.status.render(), statusLines) };
+    },
+  };
+}
 
-export const potetoOrchFrontierShowTool: ToolDefinition = tool({
-  description: "Show the current stack frontier.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(context, args.store, (store) => store.frontier.show(), frontierLine),
-});
+export function buildOrchStandingAddTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_standing_add",
+    description: "Append a standing order line.",
+    input: objInput({ store: storeProp, line: strProp("Standing order text.") }, ["store", "line"]),
+    async execute(input: { store: string; line: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => store.standing.add({ line: input.line }),
+          (item) => `${item.number}. ${item.line}`,
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchStatusTool: ToolDefinition = tool({
-  description: "Render status.md and print the summary counts, change text, and open gates.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(context, args.store, (store) => store.status.render(), statusLines),
-});
+export function buildOrchStandingShowTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_orch_standing_show",
+    description: "Show standing orders.",
+    input: objInput({ store: storeProp }, ["store"]),
+    async execute(input: { store: string }, context: ToolCtx) {
+      const directory = await dirOf(deps, context);
+      return {
+        content: await withStore(
+          directory,
+          input.store,
+          (store) => store.standing.show(),
+          (rows) => compactRows(rows, (item) => `${item.number}. ${item.line}`, "(no standing orders)"),
+        ),
+      };
+    },
+  };
+}
 
-export const potetoOrchStandingAddTool: ToolDefinition = tool({
-  description: "Append a standing order line.",
-  args: {
-    ...storeArg,
-    line: tool.schema.string().describe("Standing order text."),
-  },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => store.standing.add({ line: args.line }),
-      (item) => `${item.number}. ${item.line}`,
-    ),
-});
-
-export const potetoOrchStandingShowTool: ToolDefinition = tool({
-  description: "Show standing orders.",
-  args: { ...storeArg },
-  execute: async (args, context) =>
-    withStore(
-      context,
-      args.store,
-      (store) => store.standing.show(),
-      (rows) => compactRows(rows, (item) => `${item.number}. ${item.line}`, "(no standing orders)"),
-    ),
-});
-
-export const potetoOrchTools: Record<string, ToolDefinition> = {
-  poteto_orch_init: potetoOrchInitTool,
-  poteto_orch_unit_add: potetoOrchUnitAddTool,
-  poteto_orch_unit_set: potetoOrchUnitSetTool,
-  poteto_orch_unit_get: potetoOrchUnitGetTool,
-  poteto_orch_unit_list: potetoOrchUnitListTool,
-  poteto_orch_unit_counts: potetoOrchUnitCountsTool,
-  poteto_orch_ledger_record: potetoOrchLedgerRecordTool,
-  poteto_orch_ledger_check: potetoOrchLedgerCheckTool,
-  poteto_orch_ledger_summary: potetoOrchLedgerSummaryTool,
-  poteto_orch_inbox_push: potetoOrchInboxPushTool,
-  poteto_orch_inbox_drain: potetoOrchInboxDrainTool,
-  poteto_orch_inbox_count: potetoOrchInboxCountTool,
-  poteto_orch_gate_park: potetoOrchGateParkTool,
-  poteto_orch_gate_list: potetoOrchGateListTool,
-  poteto_orch_gate_resolve: potetoOrchGateResolveTool,
-  poteto_orch_frontier_set: potetoOrchFrontierSetTool,
-  poteto_orch_frontier_show: potetoOrchFrontierShowTool,
-  poteto_orch_status: potetoOrchStatusTool,
-  poteto_orch_standing_add: potetoOrchStandingAddTool,
-  poteto_orch_standing_show: potetoOrchStandingShowTool,
-};
+export function buildOrchTools(deps: { sessionDir: SessionDir }) {
+  return [
+    buildOrchInitTool(deps),
+    buildOrchUnitAddTool(deps),
+    buildOrchUnitSetTool(deps),
+    buildOrchUnitGetTool(deps),
+    buildOrchUnitListTool(deps),
+    buildOrchUnitCountsTool(deps),
+    buildOrchLedgerRecordTool(deps),
+    buildOrchLedgerCheckTool(deps),
+    buildOrchLedgerSummaryTool(deps),
+    buildOrchInboxPushTool(deps),
+    buildOrchInboxDrainTool(deps),
+    buildOrchInboxCountTool(deps),
+    buildOrchGateParkTool(deps),
+    buildOrchGateListTool(deps),
+    buildOrchGateResolveTool(deps),
+    buildOrchFrontierSetTool(deps),
+    buildOrchFrontierShowTool(deps),
+    buildOrchStatusTool(deps),
+    buildOrchStandingAddTool(deps),
+    buildOrchStandingShowTool(deps),
+  ];
+}

@@ -1,0 +1,21 @@
+✔ loadCatalog finds the skills dir and both markdown agents (11.775535ms)
+✔ loadCatalog returns no agents when the agents dir is missing (0.41473ms)
+✔ agents ship as markdown files (0.336843ms)
+✔ parseAgentFile reads description, mode, and body (0.695007ms)
+✔ loadSkillDefs finds the bundle with stable ids (4.912458ms)
+✔ loadSkillDefs skips directories without a description (0.410452ms)
+✔ splitFrontmatter keeps bodies without frontmatter intact (0.300906ms)
+✔ every skill frontmatter name matches its directory name (2.177906ms)
+✔ the v2 tool registry holds 25 uniquely named tools (2.075143ms)
+✔ every tool input is a closed object schema (0.394813ms)
+✔ the catalog loads skills and markdown agents (11.997703ms)
+✔ toSkillInfo rejects malformed skills (0.357783ms)
+✔ pending resume is consumed one-shot per session (0.184427ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 193.742755

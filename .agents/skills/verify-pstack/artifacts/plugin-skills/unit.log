@@ -1,0 +1,11 @@
+✔ v2 setup registers the skill bundle from build (12.905301ms)
+✔ v2 setup registers the 25 poteto tools (2.087276ms)
+✔ v2 setup hooks compaction resume and session context (2.007165ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 464.148757

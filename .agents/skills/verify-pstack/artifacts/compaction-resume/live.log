@@ -1,0 +1,11 @@
+=== compact attempt ===
+$ opencode api session.compact --param sessionID=ses_f372085f0ffeEuOjYQHX8bVrMq --data '{}'
+{"data":{"id":"msg_0c8e30341001vIrxMeUNgK9ltP","sessionID":"ses_f372085f0ffeEuOjYQHX8bVrMq","time":{"created":1790076715843},"type":"compaction","payload":{},"delivery":"steer"}}
+
+=== continue ===
+$ opencode run --model 9router/deepseek --session ses_f372085f0ffeEuOjYQHX8bVrMq -- <context prompt>
+PSTACK-RESUMED
+Working context. The poteto-mode skill is loaded from `/home/kevin/Repositories/opencode-pstack/skills/poteto-mode`. The prior task, loading the skill and replying READY, finished with no follow-up. No active work, no open decisions, no files changed this session.
+
+=== transcript check (session export) ===
+'Poteto mode is still active': 0 hits; 'session-pickup': 3 hits, all from skill body/model reply, none from resume note

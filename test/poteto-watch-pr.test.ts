@@ -23,8 +23,7 @@ import {
   renderPretty,
   renderStatusTable,
 } from "../src/poteto-tools/watch-pr-render.ts";
-import { potetoWatchPrClassifyTool } from "../src/poteto-tools/watch-pr-tools.ts";
-import * as tools from "../src/poteto-tools/watch-pr-tools.ts";
+import { buildWatchPrClassifyTool, buildWatchPrTools } from "../src/poteto-tools/watch-pr-tools.ts";
 
 interface FakeReaderOptions {
   readonly facts?: Partial<Omit<PullRequestFacts, "context">>;
@@ -279,10 +278,7 @@ test("renderPretty renders a blocker verdict", async () => {
 
 test("classify tool rejects an invalid PR number", async () => {
   await assert.rejects(() =>
-    (potetoWatchPrClassifyTool.execute as (args: never, ctx: never) => Promise<unknown>)(
-      { owner: "o", repo: "r", pr: 0 } as never,
-      { directory: "/tmp" } as never
-    )
+    buildWatchPrClassifyTool().execute({ owner: "o", repo: "r", pr: 0 }, { sessionID: "test" } as never),
   );
 });
 
@@ -305,12 +301,10 @@ test("stack tool status-only returns a STATUS table", async () => {
 });
 
 test("watch tools expose status, stack, and classify", () => {
-  assert.ok(tools.potetoWatchPrStatusTool);
-  assert.ok(tools.potetoWatchPrStackTool);
-  assert.ok(tools.potetoWatchPrClassifyTool);
-  assert.deepEqual(Object.keys(tools.potetoWatchPrTools).sort(), [
-    "poteto_watch_pr_classify",
-    "poteto_watch_pr_stack",
-    "poteto_watch_pr_status",
-  ]);
+  assert.deepEqual(
+    buildWatchPrTools()
+      .map((tool) => tool.name)
+      .sort(),
+    ["poteto_watch_pr_classify", "poteto_watch_pr_stack", "poteto_watch_pr_status"],
+  );
 });

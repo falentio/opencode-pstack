@@ -1,1 +1,1 @@
-poteto-agent mode=subagent, comment-sicko mode=subagent, negative-control=no-such-agent not found, rev=d67c88f
+catalog+plugin unit pass (agents ship as subagent md files), debug agents lists 7 built-ins only (no injection, expected v2), README documents .opencode/agents install

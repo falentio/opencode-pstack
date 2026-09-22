@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { isAbsolute, resolve } from "node:path";
-import { tool, type ToolDefinition } from "@opencode-ai/plugin";
+import type { SessionDir } from "./session-dir.ts";
 
 export type Bucket =
   | "hold-wip"
@@ -210,19 +210,24 @@ function auditRepo(repo: string, recentWorktrees: readonly string[] = []): strin
   return `warn: could not fetch origin/main; merged column may be stale\n${table}`;
 }
 
-export const potetoWorktreeAuditTool: ToolDefinition = tool({
-  description:
-    "Read-only worktree prune audit. Lists non-main worktrees as TSV with SIZE, AGE, MERGED, DIRTY, REMOTE, PR, LAST_CHAT, BUCKET, WORKTREE sorted by SIZE descending like the legacy script. Runs a best-effort git fetch origin main first; a fetch failure prefixes a stale-merge warning. LAST_CHAT is recent when the worktree is in recentWorktrees, else -. Pass session-derived worktree paths via recentWorktrees because opencode has a session API, not a transcript grep dir. Shells only to git, du, and gh.",
-  args: {
-    repo: tool.schema.string().optional().describe("Repository directory, absolute or relative to the session directory. Defaults to the session repo top level."),
-    recentWorktrees: tool.schema.array(tool.schema.string()).optional().describe("Worktree paths touched recently; they map to LAST_CHAT recent and the verify-recent-chat bucket."),
-  },
-  execute: async (args, context) => {
-    const repo = resolveRepo(args.repo, context.directory);
-    return auditRepo(repo, args.recentWorktrees ?? []);
-  },
-});
-
-export const potetoWorktreeAuditTools: Record<string, ToolDefinition> = {
-  poteto_worktree_audit: potetoWorktreeAuditTool,
-};
+export function buildWorktreeAuditTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_worktree_audit",
+    description:
+      "Read-only worktree prune audit. Lists non-main worktrees as TSV with SIZE, AGE, MERGED, DIRTY, REMOTE, PR, LAST_CHAT, BUCKET, WORKTREE sorted by SIZE descending like the legacy script. Runs a best-effort git fetch origin main first; a fetch failure prefixes a stale-merge warning. LAST_CHAT is recent when the worktree is in recentWorktrees, else -. Pass session-derived worktree paths via recentWorktrees because opencode has a session API, not a transcript grep dir. Shells only to git, du, and gh.",
+    input: {
+      type: "object",
+      properties: {
+        repo: { type: "string", description: "Repository directory, absolute or relative to the session directory. Defaults to the session repo top level." },
+        recentWorktrees: { type: "array", items: { type: "string" }, description: "Worktree paths touched recently; they map to LAST_CHAT recent and the verify-recent-chat bucket." },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    async execute(input: { repo?: string; recentWorktrees?: string[] }, context: { sessionID: string }) {
+      const directory = await deps.sessionDir(context.sessionID);
+      const repo = resolveRepo(input.repo, directory);
+      return { content: auditRepo(repo, input.recentWorktrees ?? []) };
+    },
+  };
+}

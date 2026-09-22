@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { tool, type ToolDefinition } from "@opencode-ai/plugin";
+import type { SessionDir } from "./session-dir.ts";
 
 type PlanLine = {
   n: number;
@@ -253,23 +253,31 @@ export function checkPlanContent(content: string, fileLabel: string): CheckResul
   return { reportLines, problems };
 }
 
-export const potetoCheckPlanTool: ToolDefinition = tool({
-  description:
-    "Check a poteto multi-phase plan file for required shape, verification rule, lanes, perf items, and review gates. Reports problems inline; a non-zero problem count means the plan failed.",
-  args: {
-    path: tool.schema.string().describe("Plan markdown path, absolute or relative to the session directory."),
-  },
-  execute: async (args, context) => {
-    const rawPath = args.path;
-    const resolved = isAbsolute(rawPath) ? rawPath : resolve(context.directory, rawPath);
-    let text: string;
-    try {
-      text = readFileSync(resolved, "utf8");
-    } catch {
-      throw new Error(`Cannot read plan file at ${resolved}.`);
-    }
-    const result = checkPlanContent(text, args.path);
-    const summary = `${result.reportLines.length} PR sections, ${result.problems.length} problems`;
-    return [...result.reportLines, summary, ...result.problems].join("\n");
-  },
-});
+export function buildCheckPlanTool(deps: { sessionDir: SessionDir }) {
+  return {
+    name: "poteto_check_plan",
+    description:
+      "Check a poteto multi-phase plan file for required shape, verification rule, lanes, perf items, and review gates. Reports problems inline; a non-zero problem count means the plan failed.",
+    input: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Plan markdown path, absolute or relative to the session directory." },
+      },
+      required: ["path"],
+      additionalProperties: false,
+    },
+    async execute(input: { path: string }, context: { sessionID: string }) {
+      const directory = await deps.sessionDir(context.sessionID);
+      const resolved = isAbsolute(input.path) ? input.path : resolve(directory, input.path);
+      let text: string;
+      try {
+        text = readFileSync(resolved, "utf8");
+      } catch {
+        throw new Error(`Cannot read plan file at ${resolved}.`);
+      }
+      const result = checkPlanContent(text, input.path);
+      const summary = `${result.reportLines.length} PR sections, ${result.problems.length} problems`;
+      return { content: [...result.reportLines, summary, ...result.problems].join("\n") };
+    },
+  };
+}

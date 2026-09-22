@@ -2,13 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   WORKTREE_AUDIT_HEADER,
+  buildWorktreeAuditTool,
   classifyRow,
   formatTable,
   parseHumanSize,
-  potetoWorktreeAuditTools,
-  potetoWorktreeAuditTool,
   type WorktreeRow,
 } from "../src/poteto-tools/worktree-audit.ts";
+import { buildPotetoTools } from "../src/poteto-tools/index.ts";
+import { staticSessionDir } from "../src/poteto-tools/session-dir.ts";
 
 function row(partial: Partial<WorktreeRow> = {}): WorktreeRow {
   return {
@@ -68,6 +69,8 @@ test("parseHumanSize orders legacy size strings descending", () => {
 });
 
 test("the tool is registered under its native name", () => {
-  assert.ok(potetoWorktreeAuditTool);
-  assert.deepEqual(Object.keys(potetoWorktreeAuditTools), ["poteto_worktree_audit"]);
+  assert.equal(buildWorktreeAuditTool({ sessionDir: staticSessionDir("/tmp") }).name, "poteto_worktree_audit");
+  assert.ok(
+    buildPotetoTools({ sessionDir: staticSessionDir("/tmp") }).some((tool) => tool.name === "poteto_worktree_audit"),
+  );
 });

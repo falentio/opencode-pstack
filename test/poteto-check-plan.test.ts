@@ -3,7 +3,16 @@ import assert from "node:assert/strict";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkPlanContent, potetoCheckPlanTool } from "../src/poteto-tools/check-plan.ts";
+import { buildCheckPlanTool, checkPlanContent } from "../src/poteto-tools/check-plan.ts";
+import { staticSessionDir } from "../src/poteto-tools/session-dir.ts";
+
+const potetoCheckPlanTool = {
+  execute: async (args: { path: string }, context: { directory: string }) => {
+    const tool = buildCheckPlanTool({ sessionDir: staticSessionDir(context.directory) });
+    const out = (await tool.execute(args, { sessionID: "test" })) as { content: string };
+    return out.content;
+  },
+};
 
 const RULE =
   "Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.";

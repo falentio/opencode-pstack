@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   buildResumeContext,
   findPotetoEvidence,
-  handleCompacting,
+  findPotetoEvidenceV2,
+  resumeSystemPart,
   takePendingResume,
   type PotetoEvidence,
   type PotetoSessionMessage,
@@ -15,22 +16,6 @@ function userText(text: string): PotetoSessionMessage {
 
 function toolMessage(tool: string, input: unknown): PotetoSessionMessage {
   return { info: { role: "assistant" }, parts: [{ type: "tool", tool, state: { input } }] };
-}
-
-function fakeClient(data: PotetoSessionMessage[] | Error, logs: unknown[]) {
-  return {
-    session: {
-      messages: async () => {
-        if (data instanceof Error) throw data;
-        return { data };
-      },
-    },
-    app: {
-      log: async (entry: unknown) => {
-        logs.push(entry);
-      },
-    },
-  };
 }
 
 test("findPotetoEvidence matches a slash command", () => {
@@ -155,40 +140,42 @@ test("buildResumeContext names the kind, orders re-invocation, and keeps the pic
   }
 });
 
-test("handleCompacting returns the found evidence and pushes one entry", async () => {
-  const logs: unknown[] = [];
-  const client = fakeClient(
-    [userText("hi"), userText("/poteto-mode go"), toolMessage("skill", { name: "poteto-mode" })],
-    logs,
-  );
-  const output: { context: string[]; prompt?: string } = { context: [] };
-  const evidence = await handleCompacting(client as never, "s1", output);
-  assert.ok(evidence);
-  assert.equal(evidence.kind, "slash-command");
-  assert.equal(output.context.length, 1);
-  assert.equal(output.context[0], buildResumeContext(evidence));
-  assert.equal(output.prompt, undefined);
+test("findPotetoEvidenceV2 matches a v2 user message with a slash command", () => {
+  const out = findPotetoEvidenceV2([{ role: "user", parts: [{ type: "text", text: "please /poteto-mode resume" }] }]);
+  assert.ok(out);
+  assert.equal(out.kind, "slash-command");
 });
 
-test("handleCompacting returns null when no evidence exists", async () => {
-  const logs: unknown[] = [];
-  const client = fakeClient([userText("hello there")], logs);
-  const output: { context: string[]; prompt?: string } = { context: [] };
-  const evidence = await handleCompacting(client as never, "s1", output);
-  assert.equal(evidence, null);
-  assert.deepEqual(output.context, []);
-  assert.equal(output.prompt, undefined);
+test("findPotetoEvidenceV2 matches expanded skill content and rejects opt out", () => {
+  const out = findPotetoEvidenceV2([{ role: "user", content: "# Poteto mode\n\ndo the task" }]);
+  assert.ok(out);
+  assert.equal(out.kind, "slash-command");
+  assert.equal(findPotetoEvidenceV2([{ role: "user", content: "/poteto-mode opt out now" }]), null);
 });
 
-test("handleCompacting fails closed when message fetch throws", async () => {
-  const logs: unknown[] = [];
-  const client = fakeClient(new Error("boom"), logs);
-  const output: { context: string[]; prompt?: string } = { context: [] };
-  const evidence = await handleCompacting(client as never, "s1", output);
-  assert.equal(evidence, null);
-  assert.deepEqual(output.context, []);
-  assert.equal(output.prompt, undefined);
-  assert.equal(logs.length, 1);
+test("findPotetoEvidenceV2 matches v2 tool-call parts for skill and subagent", () => {
+  const skill = findPotetoEvidenceV2([
+    { role: "assistant", parts: [{ type: "tool-call", name: "skill", input: { name: "poteto-mode" } }] },
+  ]);
+  assert.ok(skill);
+  assert.equal(skill.kind, "skill-call");
+  const agent = findPotetoEvidenceV2([
+    { role: "assistant", parts: [{ type: "tool-call", name: "subagent", input: { subagent_type: "poteto-agent" } }] },
+  ]);
+  assert.ok(agent);
+  assert.equal(agent.kind, "agent-spawn");
+});
+
+test("findPotetoEvidenceV2 returns null without poteto markers", () => {
+  assert.equal(findPotetoEvidenceV2([{ role: "user", parts: [{ type: "text", text: "hello there" }] }]), null);
+  assert.equal(findPotetoEvidenceV2([]), null);
+});
+
+test("resumeSystemPart wraps the resume context as a text part", () => {
+  const part = resumeSystemPart({ kind: "skill-call", detail: "x" });
+  assert.equal(part.type, "text");
+  assert.ok(part.text.includes("skill-call"));
+  assert.ok(part.text.includes("session-pickup.md"));
 });
 
 test("takePendingResume is one-shot per session", () => {

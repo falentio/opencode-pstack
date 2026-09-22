@@ -1,12 +1,8 @@
-import type { PluginInput } from "@opencode-ai/plugin";
-
 export type PotetoEvidence = {
   kind: "slash-command" | "skill-call" | "agent-spawn";
   detail: string;
 };
 
-// @opencode-ai/plugin imports Message and Part for its own hooks but does not
-// re-export them, so keep the narrow shape this hook actually reads.
 type PotetoPart = {
   type: string;
   text?: unknown;
@@ -46,8 +42,57 @@ export function findPotetoEvidence(messages: readonly PotetoSessionMessage[]): P
   }
 }
 
+export function findPotetoEvidenceV2(messages: readonly unknown[]): PotetoEvidence | null {
+  try {
+    const limit = Math.min(messages.length, MAX_MESSAGES);
+    for (let i = 0; i < limit; i++) {
+      const message = messages[i];
+      let role = "";
+      try {
+        const record = message as Record<string, unknown>;
+        if (record && typeof record["role"] === "string") role = record["role"] as string;
+        else {
+          const info = record?.["info"] as Record<string, unknown> | undefined;
+          if (info && typeof info["role"] === "string") role = info["role"] as string;
+        }
+      } catch {
+        role = "";
+      }
+      let text: string;
+      try {
+        text = JSON.stringify(message) ?? "";
+      } catch {
+        continue;
+      }
+      if (role === "user" || role === "") {
+        if (text.includes(SKILL_CONTENT_MARKER) || SLASH_COMMAND_PATTERN.test(text)) {
+          const instruction = text.includes(SKILL_CONTENT_MARKER)
+            ? text.slice(text.indexOf(SKILL_CONTENT_MARKER) + SKILL_CONTENT_MARKER.length)
+            : text;
+          if (!OPT_OUT_PATTERN.test(instruction)) {
+            return { kind: "slash-command", detail: instruction.trim().slice(0, 200) };
+          }
+        }
+      }
+      if (text.includes("poteto-mode") && (text.includes("skill") || text.includes("tool-call"))) {
+        return { kind: "skill-call", detail: `skill tool invoked for ${SKILL_NAME}` };
+      }
+      if (text.includes("poteto-agent")) {
+        return { kind: "agent-spawn", detail: "task tool spawned poteto-agent" };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function buildResumeContext(evidence: PotetoEvidence): string {
   return `Poteto mode is still active, loaded earlier via ${evidence.kind}. Re-invoke the ${SKILL_NAME} skill via the skill tool now, before any other work, and follow the copy it returns rather than stale instructions from before the summary. Resume from the compaction summary using ${SESSION_PICKUP_PATH}. If the user opted out, ignore this note.`;
+}
+
+export function resumeSystemPart(evidence: PotetoEvidence): { type: "text"; text: string } {
+  return { type: "text", text: buildResumeContext(evidence) };
 }
 
 export function takePendingResume(
@@ -57,31 +102,6 @@ export function takePendingResume(
   const evidence = pending.get(sessionID);
   if (evidence) pending.delete(sessionID);
   return evidence;
-}
-
-export async function handleCompacting(
-  client: PluginInput["client"],
-  sessionID: string,
-  output: { context: string[]; prompt?: string },
-): Promise<PotetoEvidence | null> {
-  try {
-    const result = await client.session.messages({ path: { id: sessionID } });
-    const data = (result as { data?: readonly PotetoSessionMessage[] }).data;
-    if (!data) {
-      const error = (result as { error?: unknown }).error;
-      if (error) {
-        await logError(client, "failed to list session messages for compaction", error);
-      }
-      return null;
-    }
-    const evidence = findPotetoEvidence(data);
-    if (!evidence) return null;
-    output.context.push(buildResumeContext(evidence));
-    return evidence;
-  } catch (error) {
-    await logError(client, "failed to list session messages for compaction", error);
-    return null;
-  }
 }
 
 function matchSlashCommand(message: PotetoSessionMessage): PotetoEvidence | null {
@@ -121,8 +141,10 @@ function matchSkillName(input: unknown): boolean {
 function readStringField(input: unknown, field: "name" | "subagent_type"): string | null {
   if (typeof input === "string") {
     try {
-      const parsed = JSON.parse(input) as unknown;
-      if (parsed && typeof parsed === "object") return readStringField(parsed, field);
+      const parsed = input as unknown;
+      void parsed;
+      const reparsed: unknown = JSON.parse(input);
+      if (reparsed && typeof reparsed === "object") return readStringField(reparsed, field);
     } catch {
       return input;
     }
@@ -140,20 +162,5 @@ function inputMentions(input: unknown, needle: string): boolean {
     return JSON.stringify(input).toLowerCase().includes(needle);
   } catch {
     return false;
-  }
-}
-
-async function logError(client: PluginInput["client"], message: string, error: unknown): Promise<void> {
-  try {
-    await client.app.log({
-      body: {
-        service: "@falentio/opencode-pstack",
-        level: "error",
-        message,
-        extra: { error: String(error) },
-      },
-    });
-  } catch {
-    return;
   }
 }

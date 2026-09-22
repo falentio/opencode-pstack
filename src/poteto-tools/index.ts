@@ -1,17 +1,16 @@
-import type { ToolDefinition } from "@opencode-ai/plugin";
-import { potetoCheckPlanTool } from "./check-plan.ts";
-import { potetoOrchTools } from "./orch-tools.ts";
-import { potetoWatchPrTools } from "./watch-pr-tools.ts";
-import { potetoWorktreeAuditTools } from "./worktree-audit.ts";
+import type { SessionDir, V2Tool } from "./session-dir.ts";
+import { buildCheckPlanTool } from "./check-plan.ts";
+import { buildOrchTools } from "./orch-tools.ts";
+import { buildWatchPrTools } from "./watch-pr-tools.ts";
+import { buildWorktreeAuditTool } from "./worktree-audit.ts";
 
-export const potetoTools: Record<string, ToolDefinition> = {
-  poteto_check_plan: potetoCheckPlanTool,
-  ...potetoOrchTools,
-  ...potetoWatchPrTools,
-  ...potetoWorktreeAuditTools,
-};
+export type { SessionDir, V2Tool } from "./session-dir.ts";
 
-export { potetoCheckPlanTool };
-export { potetoOrchTools };
-export { potetoWatchPrTools };
-export { potetoWorktreeAuditTools };
+export function buildPotetoTools(deps: { sessionDir: SessionDir }): V2Tool[] {
+  return [
+    buildCheckPlanTool(deps),
+    ...buildOrchTools(deps),
+    ...buildWatchPrTools(),
+    buildWorktreeAuditTool(deps),
+  ];
+}

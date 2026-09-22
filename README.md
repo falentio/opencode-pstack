@@ -7,27 +7,45 @@ OpenCode.
 
 ## Install
 
-Add the package to your `opencode.json`:
+This plugin targets OpenCode v2 only (`@opencode/plugin` 2.x). Add the package
+to your `opencode.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@falentio/opencode-pstack"]
+  "plugins": ["@falentio/opencode-pstack"]
 }
 ```
 
-For a local checkout, point at the package directory instead:
+For a local checkout, symlink the package directory under `.opencode/plugins/`:
 
-```json
-{
-  "plugin": ["/abs/path/to/your/checkout"]
-}
+```bash
+mkdir -p .opencode/plugins
+ln -s /abs/path/to/your/checkout .opencode/plugins/pstack
 ```
 
-On the next OpenCode start, the plugin registers its `skills/` directory and
-its two subagents into the OpenCode config. Skills appear in the native `skill`
-tool. The agents `poteto-agent` and `comment-sicko` are available as subagents.
+The checkout root carries a one-line `index.js` re-exporting `dist/src/index.js`
+for exactly this case: v2 discovery resolves a package directory to its root
+index file and ignores `package.json` `exports`. Published npm installs are
+unaffected (resolvers prefer `exports`).
+
+On the next OpenCode start, the plugin registers its skills and its
+`poteto_*` tools into each session. Skills appear in the native `skill` tool.
 No files are copied anywhere.
+
+### Subagents
+
+OpenCode v2 plugins cannot inject agents (the agent editor exposes update,
+remove, and default, but no add). The two subagents therefore ship as files —
+copy them into the project to use them as subagents:
+
+```bash
+mkdir -p .opencode/agents
+cp /abs/path/to/your/checkout/agents/*.md .opencode/agents/
+```
+
+The agents `poteto-agent` and `comment-sicko` are then available as subagents
+with `mode: subagent`.
 
 ## Get started
 
@@ -52,13 +70,19 @@ real task, from setup and prompting through verification and overnight runs.
 
 ## How the port works
 
-OpenCode loads plugins as npm packages and does not scan them for skills or
-agents. This plugin's `config` hook registers both programmatically:
+This plugin is built on the OpenCode v2 plugin API (`Plugin.define` with an
+`id` and a `setup(ctx)` entrypoint). `setup` registers everything through
+domain transforms and session hooks:
 
-- `config.skills.paths` is extended with the package's `skills/` directory, so
-  the native `skill` tool discovers every skill.
-- `config.agent` is extended with `poteto-agent` and `comment-sicko`, using
-  each agent's description and prompt from its compiled agent module.
+- `ctx.skill.transform` adds the package's `skills/` bundle (50 skills), so
+  the native `skill` tool serves every skill inside sessions. Plugin-added
+  skills are session-scoped in v2: they never appear in `api skill.list`
+  (which shows only the file-discovery layer), and there is no `debug skill`
+  command. A live session that loads `poteto-mode` is the registration proof.
+- Agents cannot be registered programmatically in v2, so `agents/` ships as
+  `poteto-agent.md` and `comment-sicko.md` for file-based install (see above).
+  The `src/catalog.ts` parser still validates both files (description,
+  `mode: subagent`, prompt body) and the suite enforces it.
 
 The plugin also registers native `poteto_*` tools through the `tool` hook, so
 playbooks call tools instead of shelling to scripts:
@@ -71,9 +95,12 @@ playbooks call tools instead of shelling to scripts:
   them to poll.
 - `poteto_worktree_audit` lists non-main worktrees as TSV.
 
-The hooks only add to the user's config. They never replace existing skill
-paths or clobber existing agents. `scripts/smoke.mjs` stays as the dev-only
-server probe behind `pnpm smoke`. It has no tool home.
+The transforms only add to the session catalog. They never replace existing
+skills or clobber anything. `scripts/smoke.mjs` stays as the dev-only
+model-free probe behind `pnpm smoke`: it boots a sandboxed location through
+the real CLI and asserts the v2 layering (discovery shows file skills, the
+plugin boots clean). Skill content is proved by `test/plugin-setup.test.ts`
+and the verify-pstack live drive. It has no tool home.
 
 ## Differences from the Cursor plugin
 
@@ -109,13 +136,15 @@ pnpm check
 ```
 
 `pnpm check` runs typecheck, build, and the `node --test` suite against the
-bundled skills and agents. It then runs `pnpm smoke`, which boots an isolated
-`opencode serve` and proves through its API that the plugin registers the
-skills and agents. `pnpm smoke` runs three modes: `none` (no pstack config,
-OpenCode built-ins only), `manual` (a `skills.paths` entry, skills only) and
-`plugin` (the plugin itself, skills and agents). It skips rather than fails
-when `opencode` is not on `PATH` outside CI. CI treats a missing or unusable
-OpenCode binary as a failed smoke test.
+bundled skills and agents. It then runs `pnpm smoke`, which drives sandboxed
+locations through the real CLI: `none` (empty config, built-ins boot clean),
+`manual` (a native v2 `skills` config entry is accepted and the location boots)
+and `plugin` (the checkout symlinked under `.opencode/plugins`, clean boot
+with no agent injection). It skips rather than fails when `opencode` is not on
+`PATH` outside CI. CI treats a missing or unusable OpenCode binary as a failed
+smoke test. Skill content is proved by `test/plugin-setup.test.ts`, and
+end-to-end skill proof (a live session loading `poteto-mode`) lives in the
+verify-pstack skill, which needs model auth that CI smoke deliberately avoids.
 
 ## Release
 

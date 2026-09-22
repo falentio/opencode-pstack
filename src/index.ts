@@ -1,84 +1,94 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Config, Plugin, PluginInput } from "@opencode-ai/plugin";
-import { loadCatalog } from "./catalog.ts";
-import { buildResumeContext, handleCompacting, takePendingResume, type PotetoEvidence } from "./poteto-compaction.ts";
-import { potetoTools } from "./poteto-tools/index.ts";
+import { Plugin } from "@opencode/plugin";
+import { loadCatalog, loadSkillDefs, toSkillInfo } from "./catalog.ts";
+import {
+  findPotetoEvidenceV2,
+  resumeSystemPart,
+  takePendingResume,
+  type PotetoEvidence,
+} from "./poteto-compaction.ts";
+import { buildPotetoTools } from "./poteto-tools/index.ts";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-// opencode accepts a `skills.paths` array at runtime but the v1 Config type
-// does not declare it. Read it through one accessor so the gap lives here and
-// disappears when the upstream type catches up. A malformed `skills` value from
-// a hand-edited config is replaced rather than trusted.
-export function skillsPaths(config: Config): string[] {
-  const holder = config as { skills?: { paths?: string[] } };
-  if (typeof holder.skills !== "object" || holder.skills === null) holder.skills = {};
-  if (!Array.isArray(holder.skills.paths)) holder.skills.paths = [];
-  return holder.skills.paths;
+type SetupContext = Parameters<Parameters<typeof Plugin.define>[0]["setup"]>[0];
+
+async function sessionDirectory(ctx: SetupContext, sessionID: string): Promise<string> {
+  try {
+    const session = (await ctx.session.get({ sessionID })) as unknown as {
+      location?: { directory?: unknown };
+    };
+    const directory = session?.location?.directory;
+    if (typeof directory === "string" && directory.length > 0) return directory;
+  } catch {
+    return process.cwd();
+  }
+  return process.cwd();
 }
 
-const PstackPlugin: Plugin = async ({ client }) => {
-  const pendingResume = new Map<string, PotetoEvidence>();
-  return {
-    async config(input) {
-      try {
-        const catalog = loadCatalog(packageRoot);
-        if (!existsSync(catalog.skillsDir)) {
-          await log(client, "warn", "pstack skills directory not found", {
-            skillsDir: catalog.skillsDir,
-          });
-          return;
+export default Plugin.define({
+  id: "pstack",
+  async setup(ctx) {
+    const pendingResume = new Map<string, PotetoEvidence>();
+
+    // NOTE (v2): the agent editor exposes update/remove/default but no add(),
+    // so a plugin cannot inject agents. poteto-agent and comment-sicko ship as
+    // agents/*.md for file-based install (.opencode/agents/); src/catalog.ts
+    // still parses and validates them, but setup() deliberately registers no agents.
+    const catalog = loadCatalog(packageRoot);
+    if (!existsSync(catalog.skillsDir)) {
+      console.error(`[@falentio/opencode-pstack] skills directory not found: ${catalog.skillsDir}`);
+    } else {
+      const skills = loadSkillDefs(catalog.skillsDir).map(toSkillInfo);
+      const captured = skills;
+      await ctx.skill.transform((editor) => {
+        for (const skill of captured) {
+          try {
+            editor.add(skill);
+          } catch (error) {
+            console.error(`[@falentio/opencode-pstack] failed to register skill: ${String(error)}`);
+          }
         }
-        skillsPaths(input).push(catalog.skillsDir);
-        input.agent ??= {};
-        for (const agent of catalog.agents) {
-          input.agent[agent.name] = {
-            description: agent.description,
-            mode: "subagent",
-            prompt: agent.prompt,
-          };
-        }
-      } catch (error) {
-        await log(client, "error", "failed to register pstack skills and agents", {
-          error: String(error),
-        });
+      });
+    }
+
+    const tools = buildPotetoTools({ sessionDir: (sessionID) => sessionDirectory(ctx, sessionID) });
+    const capturedTools = tools;
+    await ctx.tool.transform((editor) => {
+      for (const tool of capturedTools) {
+        editor.add(tool);
       }
-    },
-    async "experimental.session.compacting"(input, output) {
-      const evidence = await handleCompacting(client, input.sessionID, output);
-      if (evidence) pendingResume.set(input.sessionID, evidence);
-    },
-    async "experimental.chat.system.transform"(input, output) {
-      if (!input.sessionID) return;
-      const evidence = takePendingResume(pendingResume, input.sessionID);
+    });
+
+    await ctx.session.hook("compaction", (event) => {
+      const evidence = findPotetoEvidenceV2(event.messages as unknown as readonly unknown[]);
       if (!evidence) return;
-      output.system.push(buildResumeContext(evidence));
-    },
-    async event({ event }) {
-      if (event.type === "session.deleted") pendingResume.delete(event.properties.info.id);
-    },
-    tool: {
-      ...potetoTools,
-    },
-  };
-};
+      event.system.push(resumeSystemPart(evidence));
+      pendingResume.set(event.sessionID, evidence);
+    });
 
-async function log(
-  client: PluginInput["client"],
-  level: "info" | "warn" | "error",
-  message: string,
-  extra?: Record<string, unknown>,
-) {
-  await client.app.log({
-    body: {
-      service: "@falentio/opencode-pstack",
-      level,
-      message,
-      extra,
-    },
-  });
-}
+    await ctx.session.hook("context", (event) => {
+      const evidence = takePendingResume(pendingResume, event.sessionID);
+      if (!evidence) return;
+      event.system.push(resumeSystemPart(evidence));
+    });
 
-export default PstackPlugin;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+          if (event.type === "session.deleted") {
+            const sessionID = (event as unknown as { data?: { sessionID?: unknown } }).data?.sessionID;
+            if (typeof sessionID === "string") pendingResume.delete(sessionID);
+          }
+        }
+      } catch {
+        return;
+      }
+    })();
+
+    return () => controller.abort();
+  },
+});

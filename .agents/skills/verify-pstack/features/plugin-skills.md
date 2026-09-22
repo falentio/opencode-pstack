@@ -1,34 +1,33 @@
 # Plugin skills registration
 
-Plugin skills registration lets a user install the checkout locally and see every bundled pstack skill in their real opencode session, loaded from the local build rather than npm.
+Plugin skills registration makes every bundled pstack skill visible to sessions in a project that loads the checkout from build. In opencode v2, plugin-added skills are session-scoped: they reach the model inside a session, and no CLI list command shows them. Registration is therefore proved by a unit drive plus a live session drive, never by dumping a list.
 
 ## Sub-features
 
-- `skills-list` lists all 50 bundled skills via the user-facing skill surface.
-- `skills-from-build` proves the listing comes from the checkout's `dist/` build, not an npm install.
-- `skills-local-config` proves a local per-project `opencode.json` pointing at the checkout path is enough to load them.
+- `skills-bundle` proves `setup()` registers the full bundle (50 skills including `poteto-mode`) from the checkout's `dist/` build.
+- `skills-session-scope` proves a real headless session sees and loads `poteto-mode` from the build-loaded plugin.
+- `skills-discovery-layer` documents that `api skill.list` shows only the file-discovery layer (globals), where `poteto-mode` must be absent; a drive that asserts on that list alone is a false proof.
 
 ## How to get to it (user POV)
 
-- Point a project's `opencode.json` `plugin` entry at the checkout path and run `opencode debug skill` in that project.
-- Ask opencode for the `poteto-mode` skill in a session started in that project.
+- Load the checkout in a project (symlink it under `.opencode/plugins/` or install the published package) and start a session there.
+- Ask the session for the `poteto-mode` skill and watch it load the playbook.
 
 ## Driving it with pstack-verify-run
 
 Preconditions:
 
 - `scripts/doctor.sh "$RUN_ROOT"` exits 0.
-- `$RUN_ROOT/opencode.json` `plugin` entry equals the checkout path.
+- `pnpm build` is fresh in `$PSTACK_REPO` (the plugin loads from `dist/`, never npm).
 
-- **List skills.** Run `pstack-verify-run.sh "$RUN_ROOT" --mode debug-skill`. Exit code `0` and the JSON output contains `"name": "poteto-mode"`.
-- **Count the bundle.** Run `pstack-verify-run.sh "$RUN_ROOT" --mode debug-skill | grep -c '"name":'`. The count equals the number of directories under `<checkout>/skills` plus builtins (50 plugin skills at last count; assert `>= 50` and record the exact number).
-- **Prove build origin.** Run `pstack-verify-run.sh "$RUN_ROOT" --mode debug-skill | grep '"location"'`. At least one location starts with `<checkout>/skills/` (e.g. `<checkout>/skills/poteto-mode/SKILL.md`).
-- **Prove local config.** Run `cat "$RUN_ROOT/opencode.json"`. The `plugin` array contains exactly the checkout path and no npm spec.
-- **Proof.** Save the full `debug-skill` stdout to `artifacts/plugin-skills/list.json` plus a one-line summary (`<count> skills, poteto-mode present, locations under <checkout>/skills`) to `artifacts/plugin-skills/summary.txt`.
+- **Prove the bundle.** Run `node --test test/plugin-setup.test.ts` in `$PSTACK_REPO`. Exit code `0`. The `v2 setup registers the skill bundle from build` case asserts 50+ skills including `poteto-mode` with a `path` under `<checkout>/skills` and the real `SKILL.md` body.
+- **Prove session scope.** Run the `skill-live-load` feature drive on the same `$RUN_ROOT`. Its `PSTACK-VERIFY-OK` marker is the session-scope proof; record the run root and checkout revision with it.
+- **Document the discovery layer.** Run `pstack-verify-run.sh "$RUN_ROOT" --mode skills`. Exit code `0`. Assert `poteto-mode` is absent from the output: the discovery layer legitimately lacks plugin skills in v2, so presence here would mean the fixture is testing the wrong layer.
+- **Proof.** Save the unit output to `artifacts/plugin-skills/unit.log`, the discovery dump to `artifacts/plugin-skills/discovery.json`, and one line (`<n> bundled skills via setup, live marker <run-root>@<rev>, discovery layer has no poteto-mode`) to `artifacts/plugin-skills/summary.txt`.
 
 ## Gotchas
 
-- `opencode debug skill` with no project config prints usage, not the list. The helper cds to `$RUN_ROOT` so opencode loads the local `opencode.json`; invoking `opencode debug skill` anywhere else tests the wrong config.
+- There is no v2 equivalent of `opencode debug skill`. Any recipe that dumps a skill list and greps for `poteto-mode` tests the discovery layer, not the plugin; it fails closed (absent) on a healthy instance.
 - A stale `dist/` registers old skill content. Rebuild (`pnpm build`) after any `skills/` change and re-run doctor before asserting.
-- Global skills from `~/.agents/skills` also appear in the list. Assert on the `<checkout>/skills` location prefix, not the raw count alone, to prove build origin.
-- `HOME` isolation means first runs may be slow (cold cache). Slowness is not failure; only a non-zero exit or missing `poteto-mode` entry fails the drive.
+- The location must boot for `setup()` to run at all. Doctor's `agents` probe boots it; if the live drive runs on a fresh root, run the `agents` probe first so a cold-boot race cannot masquerade as missing registration.
+- First runs against the shared service may be slow (cold location boot). Slowness is not failure; only a non-zero exit or a missing marker fails the drive.
