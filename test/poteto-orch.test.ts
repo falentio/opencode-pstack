@@ -346,6 +346,39 @@ test("malformed ledger verdict is rejected", async () => {
   }
 });
 
+test("missing leaf verbs are covered by new tools", async () => {
+  const dir = freshDir();
+  await initStore(dir);
+  await potetoOrchTools["poteto_orch_unit_add"]!.execute(
+    { store: "store", id: "u1", track: "t1" },
+    ctx(dir),
+  );
+  const counts = (await potetoOrchTools["poteto_orch_unit_counts"]!.execute(
+    { store: "store" },
+    ctx(dir),
+  )) as string;
+  assert.equal(counts, "pending=1");
+  const summary = (await potetoOrchTools["poteto_orch_ledger_summary"]!.execute(
+    { store: "store" },
+    ctx(dir),
+  )) as string;
+  assert.equal(summary, "none");
+  const inboxCount = (await potetoOrchTools["poteto_orch_inbox_count"]!.execute(
+    { store: "store" },
+    ctx(dir),
+  )) as string;
+  assert.equal(inboxCount, "0");
+  await potetoOrchTools["poteto_orch_gate_park"]!.execute(
+    { store: "store", id: "g1", question: "q?", options: "a,b", defaultAnswer: "a" },
+    ctx(dir),
+  );
+  const gates = (await potetoOrchTools["poteto_orch_gate_list"]!.execute(
+    { store: "store" },
+    ctx(dir),
+  )) as string;
+  assert.match(gates, /g1\tq\?/);
+});
+
 test("frontier show starts at generation zero and pin validation holds", async () => {
   const dir = freshDir();
   const storePath = await initStore(dir);

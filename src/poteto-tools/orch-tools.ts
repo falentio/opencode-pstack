@@ -66,7 +66,7 @@ function compactRows<T>(
   const visible = limit === null ? rows : rows.slice(0, limit);
   const lines = visible.map(format);
   if (limit !== null && rows.length > limit) {
-    lines.push(`... ${rows.length - limit} more`);
+    lines.push(`... ${rows.length - limit} more; narrow with state/track filters or limit`);
   }
   return lines.join("\n");
 }
@@ -109,12 +109,18 @@ async function withStore<T>(
   operation: (store: Store) => Promise<T>,
   compact: (result: T) => string,
 ): Promise<string> {
-  const store = openStore(resolveStore(storePath, context.directory));
+  const notices: string[] = [];
+  const store = openStore(resolveStore(storePath, context.directory), {
+    force: process.env["POTETO_ORCH_FORCE"] === "1",
+    onLockStolen: (holder) => void notices.push(`notice: stealing store lock held by pid ${holder}`),
+    onStaleLock: (holder) => void notices.push(`notice: replacing stale store lock (pid ${holder} is dead)`),
+  });
   try {
-    return compact(await operation(store));
+    const rendered = compact(await operation(store));
+    return [...notices, rendered].filter((part) => part.length > 0).join("\n");
   } catch (error) {
     if (error instanceof NotFoundError && error.output !== undefined) {
-      return error.output.compact;
+      return [...notices, error.output.compact].filter((part) => part.length > 0).join("\n");
     }
     throw error;
   } finally {
@@ -196,14 +202,22 @@ export const potetoOrchUnitListTool: ToolDefinition = tool({
     ...storeArg,
     state: tool.schema.string().optional().describe("Filter by state."),
     track: tool.schema.string().optional().describe("Filter by track."),
+    limit: tool.schema.number().int().min(1).optional().describe("Max rows before truncating with a more-hint."),
   },
   execute: async (args, context) =>
     withStore(
       context,
       args.store,
       (store) => store.units.list({ state: args.state, track: args.track }),
-      (rows) => compactRows(rows, unitLine, "(no units)"),
+      (rows) => compactRows(rows, unitLine, "(no units)", args.limit ?? DISPLAY_LIMIT),
     ),
+});
+
+export const potetoOrchUnitCountsTool: ToolDefinition = tool({
+  description: "Count work units by state.",
+  args: { ...storeArg },
+  execute: async (args, context) =>
+    withStore(context, args.store, (store) => store.units.counts(), countLine),
 });
 
 export const potetoOrchLedgerRecordTool: ToolDefinition = tool({
@@ -248,6 +262,13 @@ export const potetoOrchLedgerCheckTool: ToolDefinition = tool({
     ),
 });
 
+export const potetoOrchLedgerSummaryTool: ToolDefinition = tool({
+  description: "Count verification verdicts.",
+  args: { ...storeArg },
+  execute: async (args, context) =>
+    withStore(context, args.store, (store) => store.ledger.summary(), countLine),
+});
+
 export const potetoOrchInboxPushTool: ToolDefinition = tool({
   description: "Push an agent status pointer into the inbox.",
   args: {
@@ -280,6 +301,13 @@ export const potetoOrchInboxDrainTool: ToolDefinition = tool({
       (store) => (args.peek === true ? store.inbox.peek() : store.inbox.drain()),
       (rows) => compactRows(rows, pointerLine, "(empty)", null),
     ),
+});
+
+export const potetoOrchInboxCountTool: ToolDefinition = tool({
+  description: "Count inbox pointers.",
+  args: { ...storeArg },
+  execute: async (args, context) =>
+    withStore(context, args.store, (store) => store.inbox.count(), String),
 });
 
 export const potetoOrchGateParkTool: ToolDefinition = tool({
@@ -319,6 +347,18 @@ export const potetoOrchGateResolveTool: ToolDefinition = tool({
       args.store,
       (store) => store.gates.resolve({ id: args.id, answer: args.answer }),
       (result) => `${result.id}\tresolved\t${result.answer}`,
+    ),
+});
+
+export const potetoOrchGateListTool: ToolDefinition = tool({
+  description: "List open decision gates.",
+  args: { ...storeArg },
+  execute: async (args, context) =>
+    withStore(
+      context,
+      args.store,
+      (store) => store.gates.list(),
+      (rows) => compactRows(rows, gateLine, "(no open gates)"),
     ),
 });
 
@@ -389,11 +429,15 @@ export const potetoOrchTools: Record<string, ToolDefinition> = {
   poteto_orch_unit_set: potetoOrchUnitSetTool,
   poteto_orch_unit_get: potetoOrchUnitGetTool,
   poteto_orch_unit_list: potetoOrchUnitListTool,
+  poteto_orch_unit_counts: potetoOrchUnitCountsTool,
   poteto_orch_ledger_record: potetoOrchLedgerRecordTool,
   poteto_orch_ledger_check: potetoOrchLedgerCheckTool,
+  poteto_orch_ledger_summary: potetoOrchLedgerSummaryTool,
   poteto_orch_inbox_push: potetoOrchInboxPushTool,
   poteto_orch_inbox_drain: potetoOrchInboxDrainTool,
+  poteto_orch_inbox_count: potetoOrchInboxCountTool,
   poteto_orch_gate_park: potetoOrchGateParkTool,
+  poteto_orch_gate_list: potetoOrchGateListTool,
   poteto_orch_gate_resolve: potetoOrchGateResolveTool,
   poteto_orch_frontier_set: potetoOrchFrontierSetTool,
   poteto_orch_frontier_show: potetoOrchFrontierShowTool,
