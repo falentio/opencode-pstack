@@ -4,6 +4,7 @@ import {
   WORKTREE_AUDIT_HEADER,
   classifyRow,
   formatTable,
+  parseHumanSize,
   potetoWorktreeAuditTools,
   potetoWorktreeAuditTool,
   type WorktreeRow,
@@ -17,6 +18,7 @@ function row(partial: Partial<WorktreeRow> = {}): WorktreeRow {
     dirty: "clean",
     remote: "pushed",
     pr: "-",
+    lastChat: "-",
     bucket: "review",
     worktree: "/repo/wt-a",
     ...partial,
@@ -47,12 +49,22 @@ test("a recent chat gates before safe", () => {
   assert.equal(classifyRow({ dirty: "clean", pr: "-", recent: true, merged: true }), "verify-recent-chat");
 });
 
-test("formatTable emits the header with LAST_CHAT pinned to -", () => {
+test("formatTable emits the header with per-row LAST_CHAT", () => {
   const table = formatTable([row({ bucket: "review" }), row({ bucket: "hold-wip", worktree: "/repo/wt-b" })]);
   const lines = table.split("\n");
   assert.equal(lines[0], WORKTREE_AUDIT_HEADER);
   assert.equal(lines.length, 3);
   assert.match(lines[1] ?? "", /-\treview\t\/repo\/wt-a/);
+});
+
+test("formatTable surfaces a recent LAST_CHAT marker", () => {
+  const table = formatTable([row({ lastChat: "recent", bucket: "verify-recent-chat" })]);
+  assert.match(table.split("\n")[1] ?? "", /recent\tverify-recent-chat/);
+});
+
+test("parseHumanSize orders legacy size strings descending", () => {
+  assert.ok(parseHumanSize("99M") < parseHumanSize("1.2G"));
+  assert.ok(Number.isNaN(parseHumanSize("?")));
 });
 
 test("the tool is registered under its native name", () => {
