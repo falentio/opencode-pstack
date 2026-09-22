@@ -19,5 +19,5 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: npm install --global opencode-ai@1.18.26
+      - run: npm install --global @opencode/cli@2.0.12
       - run: pnpm check

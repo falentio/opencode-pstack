@@ -35,7 +35,7 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
-      - run: npm install --global opencode-ai@1.18.26
+      - run: npm install --global @opencode/cli@2.0.12
       - run: pnpm check
       - name: Validate release tag
         shell: bash
