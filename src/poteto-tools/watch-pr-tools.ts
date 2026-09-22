@@ -127,9 +127,16 @@ function optionalPrNumber(value: number | undefined): T.PrNumber | null {
   return value === undefined ? null : parsePrNumber(value);
 }
 
+type SnapshotArgs = {
+  owner?: string;
+  repo?: string;
+  pr?: number;
+  allowDraft?: boolean;
+};
+
 async function readSingleSnapshot(
   reader: T.GitHubReader,
-  args: { owner?: string; repo?: string; pr?: number }
+  args: SnapshotArgs
 ): Promise<T.PrSnapshot> {
   const context = await resolveContext({
     reader,
@@ -141,9 +148,13 @@ async function readSingleSnapshot(
     reader,
     context,
     pendingHistory: "include",
-    allowDraft: false,
+    allowDraft: args.allowDraft ?? false,
   });
 }
+
+const allowDraftArg = {
+  allowDraft: tool.schema.boolean().optional().describe("Do not treat a draft as a merge gate."),
+} as const;
 
 export const potetoWatchPrStatusTool: ToolDefinition = tool({
   description:
@@ -153,12 +164,13 @@ export const potetoWatchPrStatusTool: ToolDefinition = tool({
     repo: tool.schema.string().optional().describe("GitHub repository name."),
     pr: tool.schema.number().int().min(1).optional().describe("Pull request number."),
     pretty: tool.schema.boolean().optional().describe("Render human text instead of JSON."),
+    ...allowDraftArg,
   },
   execute: async (args) => {
     const reader = __test__.createReader();
     try {
       const snapshot = await readSingleSnapshot(reader, args);
-      const decision = classifyPr(snapshot, false);
+      const decision = classifyPr(snapshot, args.allowDraft ?? false);
       let verdict: T.WatcherVerdict;
       if (decision.kind === "blocker") verdict = toBlockerVerdict(decision.blocker, "single");
       else if (decision.kind === "waiting")
@@ -180,6 +192,8 @@ export const potetoWatchPrStackTool: ToolDefinition = tool({
     repo: tool.schema.string().optional().describe("GitHub repository name."),
     pr: tool.schema.number().int().min(1).optional().describe("Seed pull request number."),
     pretty: tool.schema.boolean().optional().describe("Render human text instead of JSON."),
+    statusOnly: tool.schema.boolean().optional().describe("Return one STATUS table over the stack instead of a decision."),
+    ...allowDraftArg,
   },
   execute: async (args) => {
     const reader = __test__.createReader();
@@ -198,12 +212,28 @@ export const potetoWatchPrStackTool: ToolDefinition = tool({
             reader,
             context,
             pendingHistory: "include",
-            allowDraft: false,
+            allowDraft: args.allowDraft ?? false,
           })
         );
       const complete = nonEmpty(rows);
       if (complete === null) throw new Error("watch context cannot be empty");
-      const decision = selectTierMajorStackDecision(complete, false);
+      if (args.statusOnly === true) {
+        return render(
+          {
+            schemaVersion: 1,
+            sequence: 1,
+            observedAt: observedAt(),
+            mode: "stack",
+            kind: "STATUS",
+            terminal: true,
+            exitCode: 0,
+            reason: "status-only",
+            rows: complete,
+          },
+          args.pretty,
+        );
+      }
+      const decision = selectTierMajorStackDecision(complete, args.allowDraft ?? false);
       let verdict: T.WatcherVerdict;
       if (decision.kind === "blocker") verdict = toBlockerVerdict(decision.blocker, "stack");
       else if (decision.kind === "waiting")
@@ -221,24 +251,26 @@ export const potetoWatchPrClassifyTool: ToolDefinition = tool({
   description:
     "Return the raw snapshot plus decision kind for one PR as JSON. Read-only; shells only to gh and git.",
   args: {
-    owner: tool.schema.string().describe("GitHub repository owner."),
-    repo: tool.schema.string().describe("GitHub repository name."),
-    pr: tool.schema.number().int().min(1).describe("Pull request number."),
+    owner: tool.schema.string().optional().describe("GitHub repository owner."),
+    repo: tool.schema.string().optional().describe("GitHub repository name."),
+    pr: tool.schema.number().int().min(1).optional().describe("Pull request number."),
+    ...allowDraftArg,
   },
   execute: async (args) => {
     const reader = __test__.createReader();
-    const context: T.PrContext = {
-      owner: args.owner,
-      repo: args.repo,
-      number: parsePrNumber(args.pr),
-    };
+    const context = await resolveContext({
+      reader,
+      owner: args.owner ?? null,
+      repo: args.repo ?? null,
+      pr: optionalPrNumber(args.pr),
+    });
     const snapshot = await readSnapshot({
       reader,
       context,
       pendingHistory: "include",
-      allowDraft: false,
+      allowDraft: args.allowDraft ?? false,
     });
-    const decision = classifyPr(snapshot, false);
+    const decision = classifyPr(snapshot, args.allowDraft ?? false);
     return `${JSON.stringify({ snapshot, decision })}\n`;
   },
 });

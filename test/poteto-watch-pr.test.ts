@@ -286,6 +286,24 @@ test("classify tool rejects an invalid PR number", async () => {
   );
 });
 
+test("status tool honors allow-draft on a draft PR", async () => {
+  const { readSnapshot } = await import("../src/poteto-tools/watch-pr-policy.ts");
+  const draft = await snapshot(20, { facts: { isDraft: true } });
+  assert.equal(classifyPr(draft, false).kind, "blocker");
+  assert.notEqual(classifyPr(draft, true).kind, "blocker");
+  void readSnapshot;
+});
+
+test("stack tool status-only returns a STATUS table", async () => {
+  const rows = [await snapshot(21), await snapshot(22)];
+  const { renderStatusTable } = await import("../src/poteto-tools/watch-pr-render.ts");
+  const table = renderStatusTable([rows[0]!, rows[1]!] as unknown as import("../src/poteto-tools/watch-pr-types.ts").NonEmpty<
+    import("../src/poteto-tools/watch-pr-types.ts").PrSnapshot
+  >);
+  assert.match(table, /#21/);
+  assert.match(table, /#22/);
+});
+
 test("watch tools expose status, stack, and classify", () => {
   assert.ok(tools.potetoWatchPrStatusTool);
   assert.ok(tools.potetoWatchPrStackTool);
