@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Config, Plugin, PluginInput } from "@opencode-ai/plugin";
 import { loadCatalog } from "./catalog.ts";
 import { buildResumeContext, handleCompacting, takePendingResume, type PotetoEvidence } from "./poteto-compaction.ts";
+import { potetoTools } from "./poteto-tools/index.ts";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -57,6 +58,9 @@ const PstackPlugin: Plugin = async ({ client }) => {
     },
     async event({ event }) {
       if (event.type === "session.deleted") pendingResume.delete(event.properties.info.id);
+    },
+    tool: {
+      ...potetoTools,
     },
   };
 };
