@@ -33,10 +33,6 @@ export default Plugin.define({
   async setup(ctx) {
     const pendingResume = new Map<string, PotetoEvidence>();
 
-    // NOTE (v2): the agent editor exposes update/remove/default but no add(),
-    // so a plugin cannot inject agents. poteto-agent and comment-sicko ship as
-    // agents/*.md for file-based install (.opencode/agents/); src/catalog.ts
-    // still parses and validates them, but setup() deliberately registers no agents.
     const catalog = loadCatalog(packageRoot);
     if (!existsSync(catalog.skillsDir)) {
       console.error(`[@falentio/opencode-pstack] skills directory not found: ${catalog.skillsDir}`);
@@ -53,6 +49,19 @@ export default Plugin.define({
         }
       });
     }
+
+    // No add() on the agent editor; update(id, fn) is the upsert that creates the
+    // agent. Its skeleton already carries id/name, so write only what AgentDef holds.
+    const capturedAgents = catalog.agents;
+    await ctx.agent.transform((editor) => {
+      for (const agent of capturedAgents) {
+        editor.update(agent.name, (a) => {
+          a.description = agent.description;
+          a.mode = agent.mode;
+          a.system = agent.prompt;
+        });
+      }
+    });
 
     const tools = buildPotetoTools({ sessionDir: (sessionID) => sessionDirectory(ctx, sessionID) });
     const capturedTools = tools;

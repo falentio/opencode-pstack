@@ -42,6 +42,6 @@ Keep implementation details out of the map. Name only user paths, stable handles
 ## Features
 
 - [Plugin skills registration](./plugin-skills.md) covers the bundled skills reaching sessions from the build-loaded plugin (unit bundle proof plus live-session proof; v2 has no CLI list of plugin skills).
-- [Plugin agents shipment](./plugin-agents.md) covers both subagent files shipping with `subagent` mode plus install docs (v2 plugins cannot inject agents, so shipment — not resolution — is verified).
+- [Plugin agents registration](./plugin-agents.md) covers the build-loaded plugin registering both subagents (`poteto-agent`, `comment-sicko`) with `mode: subagent` (unit parse proof plus `debug agents` listing; no files copied).
 - [Skill load in a live session](./skill-live-load.md) covers one headless `opencode run` turn invoking `poteto-mode` end to end.
 - [Compaction resume note](./compaction-resume.md) covers the poteto resume context surviving session compaction in a live session.

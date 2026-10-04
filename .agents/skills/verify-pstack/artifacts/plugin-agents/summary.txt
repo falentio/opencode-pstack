@@ -1,1 +1,1 @@
-catalog+plugin unit pass (agents ship as subagent md files), debug agents lists 7 built-ins only (no injection, expected v2), README documents .opencode/agents install
+catalog+plugin unit pass (agents parse as subagent md files), debug agents lists poteto-agent + comment-sicko with mode: subagent via ctx.agent.transform, README documents automatic registration (no files copied)

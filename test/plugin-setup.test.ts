@@ -13,6 +13,7 @@ const skillsDir = join(packageRoot, "skills");
 type Captured = {
   skills: Array<{ id: string; name: string; description: string; path: string; content: string }>;
   tools: Array<{ name: string }>;
+  agents: Array<{ id: string; name: string; description?: string; mode: string; system?: string }>;
   hooks: string[];
 };
 
@@ -36,6 +37,18 @@ function mockContext(captured: Captured): unknown {
     remove: () => {},
     namespace: () => {},
   };
+  const agentEditor = {
+    list: () => [...captured.agents],
+    get: () => undefined,
+    default: () => {},
+    remove: () => {},
+    update: (id: string, fn: (agent: Captured["agents"][number]) => void) => {
+      const existing = captured.agents.find((agent) => agent.id === id);
+      const agent = existing ?? { id, name: id, mode: "primary", description: undefined, system: undefined };
+      fn(agent);
+      if (!existing) captured.agents.push(agent);
+    },
+  };
   return {
     skill: {
       transform: async (cb: (editor: typeof skillEditor) => void) => {
@@ -46,6 +59,12 @@ function mockContext(captured: Captured): unknown {
     tool: {
       transform: async (cb: (editor: typeof toolEditor) => void) => {
         cb(toolEditor);
+        return { dispose: async () => {} };
+      },
+    },
+    agent: {
+      transform: async (cb: (editor: typeof agentEditor) => void) => {
+        cb(agentEditor);
         return { dispose: async () => {} };
       },
     },
@@ -66,7 +85,7 @@ function mockContext(captured: Captured): unknown {
 
 test("v2 setup registers the skill bundle from build", async () => {
   assert.equal(plugin.id, "pstack");
-  const captured: Captured = { skills: [], tools: [], hooks: [] };
+  const captured: Captured = { skills: [], tools: [], agents: [], hooks: [] };
   const cleanup = await plugin.setup(mockContext(captured) as never);
   assert.ok(captured.skills.length >= 50, `expected at least 50 skills, saw ${captured.skills.length}`);
   const poteto = captured.skills.find((skill) => skill.id === "poteto-mode");
@@ -83,7 +102,7 @@ test("v2 setup registers the skill bundle from build", async () => {
 });
 
 test("v2 setup registers the 25 poteto tools", async () => {
-  const captured: Captured = { skills: [], tools: [], hooks: [] };
+  const captured: Captured = { skills: [], tools: [], agents: [], hooks: [] };
   await plugin.setup(mockContext(captured) as never);
   assert.equal(captured.tools.length, 25);
   assert.equal(new Set(captured.tools.map((tool) => tool.name)).size, 25);
@@ -96,8 +115,25 @@ test("v2 setup registers the 25 poteto tools", async () => {
 });
 
 test("v2 setup hooks compaction resume and session context", async () => {
-  const captured: Captured = { skills: [], tools: [], hooks: [] };
+  const captured: Captured = { skills: [], tools: [], agents: [], hooks: [] };
   await plugin.setup(mockContext(captured) as never);
   assert.ok(captured.hooks.includes("compaction"), `hooks: ${captured.hooks.join(",")}`);
   assert.ok(captured.hooks.includes("context"), `hooks: ${captured.hooks.join(",")}`);
+});
+
+test("v2 setup registers both agents from build", async () => {
+  const captured: Captured = { skills: [], tools: [], agents: [], hooks: [] };
+  await plugin.setup(mockContext(captured) as never);
+  assert.deepEqual(
+    captured.agents.map((agent) => agent.id),
+    ["comment-sicko", "poteto-agent"],
+    "agents registered in stable sorted order",
+  );
+  for (const agent of captured.agents) {
+    assert.equal(agent.mode, "subagent");
+    assert.ok(agent.description && agent.description.length > 0);
+    assert.ok(agent.system && agent.system.length > 0);
+  }
+  assert.ok(captured.agents.find((agent) => agent.id === "poteto-agent")!.system!.includes("# Poteto subagent"));
+  assert.ok(captured.agents.find((agent) => agent.id === "comment-sicko")!.system!.includes("# Comment Sicko"));
 });
