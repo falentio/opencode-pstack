@@ -4,7 +4,7 @@ Plugin skills registration makes every bundled pstack skill visible to sessions 
 
 ## Sub-features
 
-- `skills-bundle` proves `setup()` registers the full bundle (50 skills including `poteto-mode`) from the checkout's `dist/` build.
+- `skills-bundle` proves `setup()` registers the full bundle (every skill directory, including `poteto-mode`) from the checkout's `dist/` build.
 - `skills-session-scope` proves a real headless session sees and loads `poteto-mode` from the build-loaded plugin.
 - `skills-discovery-layer` documents that `api skill.list` shows only the file-discovery layer (globals), where `poteto-mode` must be absent; a drive that asserts on that list alone is a false proof.
 
@@ -20,7 +20,7 @@ Preconditions:
 - `scripts/doctor.sh "$RUN_ROOT"` exits 0.
 - `pnpm build` is fresh in `$PSTACK_REPO` (the plugin loads from `dist/`, never npm).
 
-- **Prove the bundle.** Run `node --test test/plugin-setup.test.ts` in `$PSTACK_REPO`. Exit code `0`. The `v2 setup registers the skill bundle from build` case asserts 50+ skills including `poteto-mode` with a `path` under `<checkout>/skills` and the real `SKILL.md` body.
+- **Prove the bundle.** Run `node --test test/plugin-setup.test.ts` in `$PSTACK_REPO`. Exit code `0`. The `v2 setup registers the skill bundle from build` case asserts every skill directory registers, including `poteto-mode`, with a `path` under `<checkout>/skills` and the real `SKILL.md` body.
 - **Prove session scope.** Run the `skill-live-load` feature drive on the same `$RUN_ROOT`. Its `PSTACK-VERIFY-OK` marker is the session-scope proof; record the run root and checkout revision with it.
 - **Document the discovery layer.** Run `pstack-verify-run.sh "$RUN_ROOT" --mode skills`. Exit code `0`. Assert `poteto-mode` is absent from the output: the discovery layer legitimately lacks plugin skills in v2, so presence here would mean the fixture is testing the wrong layer.
 - **Proof.** Save the unit output to `artifacts/plugin-skills/unit.log`, the discovery dump to `artifacts/plugin-skills/discovery.json`, and one line (`<n> bundled skills via setup, live marker <run-root>@<rev>, discovery layer has no poteto-mode`) to `artifacts/plugin-skills/summary.txt`.
