@@ -29,23 +29,15 @@ for exactly this case: v2 discovery resolves a package directory to its root
 index file and ignores `package.json` `exports`. Published npm installs are
 unaffected (resolvers prefer `exports`).
 
-On the next OpenCode start, the plugin registers its skills and its
-`poteto_*` tools into each session. Skills appear in the native `skill` tool.
-No files are copied anywhere.
+On the next OpenCode start, the plugin registers its skills, its two
+subagents, and its `poteto_*` tools into each session. Skills appear in the
+native `skill` tool. No files are copied anywhere.
 
 ### Subagents
 
-OpenCode v2 plugins cannot inject agents (the agent editor exposes update,
-remove, and default, but no add). The two subagents therefore ship as files —
-copy them into the project to use them as subagents:
-
-```bash
-mkdir -p .opencode/agents
-cp /abs/path/to/your/checkout/agents/*.md .opencode/agents/
-```
-
-The agents `poteto-agent` and `comment-sicko` are then available as subagents
-with `mode: subagent`.
+The plugin registers the two subagents `poteto-agent` and `comment-sicko` at
+startup, so both are available as subagents with `mode: subagent`. No files are
+copied anywhere.
 
 ## Get started
 
@@ -79,10 +71,10 @@ domain transforms and session hooks:
   skills are session-scoped in v2: they never appear in `api skill.list`
   (which shows only the file-discovery layer), and there is no `debug skill`
   command. A live session that loads `poteto-mode` is the registration proof.
-- Agents cannot be registered programmatically in v2, so `agents/` ships as
-  `poteto-agent.md` and `comment-sicko.md` for file-based install (see above).
-  The `src/catalog.ts` parser still validates both files (description,
-  `mode: subagent`, prompt body) and the suite enforces it.
+- `ctx.agent.transform` upserts both subagents from `agents/` at setup
+  (`editor.update(id, fn)` creates the agent when `id` is absent). `agents/`
+  stays the single source of truth: `src/catalog.ts` parses and validates each
+  file (description, `mode: subagent`, prompt body) and the suite enforces it.
 
 The plugin also registers native `poteto_*` tools through the `tool` hook, so
 playbooks call tools instead of shelling to scripts:
@@ -139,8 +131,8 @@ pnpm check
 bundled skills and agents. It then runs `pnpm smoke`, which drives sandboxed
 locations through the real CLI: `none` (empty config, built-ins boot clean),
 `manual` (a native v2 `skills` config entry is accepted and the location boots)
-and `plugin` (the checkout symlinked under `.opencode/plugins`, clean boot
-with no agent injection). It skips rather than fails when `opencode` is not on
+and `plugin` (the checkout symlinked under `.opencode/plugins`, which boots and
+registers both subagents). It skips rather than fails when `opencode` is not on
 `PATH` outside CI. CI treats a missing or unusable OpenCode binary as a failed
 smoke test. Skill content is proved by `test/plugin-setup.test.ts`, and
 end-to-end skill proof (a live session loading `poteto-mode`) lives in the

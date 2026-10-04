@@ -2,9 +2,10 @@
 // v2 smoke: prove the built plugin loads from build through the real opencode CLI.
 // Modes:
 //   plugin  symlink the checkout under .opencode/plugins (v2 discovery) and boot
-//           the location. Plugin skills are session-scoped in v2 (no CLI list shows
-//           them), so this mode proves loader acceptance + boot; CONTENT is proved
-//           by test/plugin-setup.test.ts and the verify-pstack live drive.
+//           the location. Asserts the plugin registers both subagents
+//           (poteto-agent, comment-sicko) through ctx.agent.transform. Plugin
+//           skills are session-scoped in v2 (no CLI list shows them), so CONTENT
+//           is proved by test/plugin-setup.test.ts and the verify-pstack live drive.
 //   manual  add the skills dir via the native v2 `skills` config array and assert
 //           the discovery layer (api skill.list) contains poteto-mode.
 //   none    empty config: discovery lacks poteto-mode, agents still boot.
@@ -121,19 +122,23 @@ if (skills === null || agents === null || cfgSkills === null) {
 
 const hasSkill = skills.includes("poteto-mode");
 const hasAgent = agents.includes("poteto-agent");
+const hasSicko = agents.includes("comment-sicko");
 const hasCfgSkills = cfgSkills.some((s) => String(s).endsWith("skills"));
 console.log(`smoke(${mode}): ${skills.length} discovery skills, ${agents.length} agents`);
-console.log(`  poteto-mode=${hasSkill} poteto-agent=${hasAgent} config-skills=${hasCfgSkills}`);
+console.log(
+  `  poteto-mode=${hasSkill} poteto-agent=${hasAgent} comment-sicko=${hasSicko} config-skills=${hasCfgSkills}`,
+);
 
 // v2 layering: the checkout is symlinked under .opencode/plugins (discovery),
-// and plugin-added skills are session-scoped, so `plugin` mode asserts a clean
-// boot (built-in agents resolve, no injection) and relies on
-// test/plugin-setup.test.ts + the live drive for skill content.
+// and plugin-added skills are session-scoped, so `plugin` mode asserts the
+// plugin boots and registers both subagents (poteto-agent, comment-sicko)
+// through ctx.agent.transform, and relies on test/plugin-setup.test.ts + the
+// live drive for skill content.
 // `manual` mode asserts the native `skills` config array is accepted and the
 // location boots; the discovery layer itself is session-scoped too.
 const pass =
   mode === "plugin"
-    ? agents.length > 0 && !hasAgent
+    ? agents.length > 0 && hasAgent && hasSicko
     : mode === "manual"
       ? agents.length > 0 && hasCfgSkills && !hasAgent
       : agents.length > 0 && !hasSkill && !hasAgent;
