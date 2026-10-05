@@ -23,7 +23,6 @@ Remaining triggers:
 - Before commit → load the deslop skill via the skill tool to clean the diff.
 - Before review → load the no-comments skill via the skill tool.
 - Shipping UI / IDE / CLI → load the matching control skill from this package. control-cli drives CLIs and TUIs. control-ui drives browser, Electron, and web UIs. For bug fixes, reproduce first on the same surface yourself; hand to the user only under the narrow Bug fix step 1 exception.
-- Starting feature work that needs isolation → load the using-git-worktrees skill via the skill tool before executing the plan.
 - Any PR-status request → the **Babysit** playbook (`playbooks/babysit.md`). That includes "babysit this", "get it green", and the commonest phrasing, "check on PR X" / "anything outstanding on X". Never triggered by merely opening a PR. Declare its mode before polling; the playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
 - Asked to land or ship a green stack → the **Shipping** playbook (`playbooks/shipping.md`). Green is not safe. Nothing gets merged before an independent per-PR verdict, and only the contiguous verified run from the root lands.
 - Review bot commented → skeptical posture. Review bots catch real bugs and also file non-issues and nitpicks, so assess each on its merits and dismiss noise with a concrete reason instead of churning code.
