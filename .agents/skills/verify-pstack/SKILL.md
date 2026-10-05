@@ -79,7 +79,7 @@ Then one pane per feature drive (feature files name the exact probe). Canonical
 probes, each executed as `herdr pane run "$PANE" "<cmd>"`:
 
 - **Skills registration:** `node --test test/plugin-setup.test.ts` in the
-  checkout (unit bundle proof: 50 skills including `poteto-mode` from `dist/`),
+  checkout (unit bundle proof: every skill directory registers, including `poteto-mode` from `dist/`),
   plus the live drive below (session-scope proof; v2 has no CLI list of
   plugin skills).
 - **Agents shipment:** `node --test test/catalog.test.ts test/plugin.test.ts`

@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCatalog, loadSkillDefs, parseAgentFile, splitFrontmatter } from "../src/catalog.ts";
+import { skillDirNames } from "./skill-dirs.ts";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -48,7 +49,11 @@ test("parseAgentFile reads description, mode, and body", () => {
 
 test("loadSkillDefs finds the bundle with stable ids", () => {
   const skills = loadSkillDefs(join(packageRoot, "skills"));
-  assert.ok(skills.length >= 50);
+  assert.deepEqual(
+    skills.map((skill) => skill.id),
+    skillDirNames(join(packageRoot, "skills")),
+    "every skill directory loads",
+  );
   const poteto = skills.find((skill) => skill.id === "poteto-mode");
   assert.ok(poteto);
   assert.ok(poteto.description.length > 0);

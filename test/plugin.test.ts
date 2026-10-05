@@ -6,6 +6,7 @@ import { loadCatalog, loadSkillDefs, toSkillInfo } from "../src/catalog.ts";
 import { buildPotetoTools } from "../src/poteto-tools/index.ts";
 import { staticSessionDir } from "../src/poteto-tools/session-dir.ts";
 import { takePendingResume, type PotetoEvidence } from "../src/poteto-compaction.ts";
+import { skillDirNames } from "./skill-dirs.ts";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -41,7 +42,11 @@ test("the catalog loads skills and markdown agents", () => {
     assert.ok(agent.prompt.length > 0);
   }
   const skills = loadSkillDefs(catalog.skillsDir);
-  assert.ok(skills.length >= 50, `expected at least 50 skills, saw ${skills.length}`);
+  assert.deepEqual(
+    skills.map((skill) => skill.id),
+    skillDirNames(catalog.skillsDir),
+    "every skill directory loads",
+  );
   const poteto = skills.find((skill) => skill.id === "poteto-mode");
   assert.ok(poteto);
   assert.ok(poteto.path.startsWith(catalog.skillsDir));

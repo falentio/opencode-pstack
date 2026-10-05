@@ -66,7 +66,7 @@ This plugin is built on the OpenCode v2 plugin API (`Plugin.define` with an
 `id` and a `setup(ctx)` entrypoint). `setup` registers everything through
 domain transforms and session hooks:
 
-- `ctx.skill.transform` adds the package's `skills/` bundle (50 skills), so
+- `ctx.skill.transform` adds the package's `skills/` bundle, so
   the native `skill` tool serves every skill inside sessions. Plugin-added
   skills are session-scoped in v2: they never appear in `api skill.list`
   (which shows only the file-discovery layer), and there is no `debug skill`

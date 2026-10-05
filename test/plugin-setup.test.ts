@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 // package root relative to dist/src/index.js differs from src/index.ts,
 // and users execute the built artifact. `pnpm check` builds before testing.
 import plugin from "../dist/src/index.js";
+import { skillDirNames } from "./skill-dirs.ts";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const skillsDir = join(packageRoot, "skills");
@@ -87,7 +88,11 @@ test("v2 setup registers the skill bundle from build", async () => {
   assert.equal(plugin.id, "pstack");
   const captured: Captured = { skills: [], tools: [], agents: [], hooks: [] };
   const cleanup = await plugin.setup(mockContext(captured) as never);
-  assert.ok(captured.skills.length >= 50, `expected at least 50 skills, saw ${captured.skills.length}`);
+  assert.deepEqual(
+    captured.skills.map((skill) => skill.id),
+    skillDirNames(skillsDir),
+    "every skill directory registers",
+  );
   const poteto = captured.skills.find((skill) => skill.id === "poteto-mode");
   assert.ok(poteto, "poteto-mode skill registered");
   assert.ok(poteto.path.startsWith(skillsDir), `skill path outside bundle: ${poteto.path}`);
