@@ -5,6 +5,8 @@ description: TypeScript best practices. Use when reading or editing any .ts or .
 
 # TypeScript best practices
 
+Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
+
 Apply the **type-system-discipline** principle skill first; this skill grounds it in TypeScript syntax.
 
 | Rule | Summary |

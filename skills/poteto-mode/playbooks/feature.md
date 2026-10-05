@@ -1,5 +1,7 @@
 ### Feature
 
+Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
+
 **You own the design. Plan, review, verify.** Delegate implementation; stay in the lead.
 
 1. `how` over the affected subsystem.

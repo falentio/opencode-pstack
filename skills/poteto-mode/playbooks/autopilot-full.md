@@ -1,5 +1,7 @@
 ### Autopilot-full
 
+Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
+
 **You own the verdicts, never the PRs. One owner runs each PR from build to merge, and nothing merges without your clean swarm verdict.** For "autopilot this queue", "full autopilot", and one-owner-per-PR programs. The job is a queue of independent PRs handed over to drive to merged with full autonomy. Orchestrate runs a standing program whose coordinator lands verified work itself and whose workers never merge; here each PR's owner carries the whole lifecycle through the merge, and the root keeps only verification, countersigns, and audits.
 
 1. **Mark the operator's items and honor state-then-wait.** Items the operator names stay hers. She reviews and she clicks, and no owner merges one. When she asks for the protocol or the plan to be stated, deliver the statement and stop. Execution starts only on her explicit go. On that go, write the goal file with the full program objective. The goal file carries across turns until the queue is done.

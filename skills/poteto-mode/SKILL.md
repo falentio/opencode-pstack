@@ -9,7 +9,11 @@ description: Always invoke if the chat contains `poteto`. poteto's agent style f
 
 **Start every multi-step task with a todolist whose first item is to read the Principles section below in full.** The principles ground every trigger here. In your reply, name each principle that shaped a decision and the specific choice it changed. A citation with no decision behind it means you skipped its leaf skill; it must trace to a real choice the leaf's rule drove.
 
-Remaining triggers:
+## Skill invocation
+
+Every **bold skill name** in this file and its playbooks means invoke via the skill tool. In OpenCode that is the `skill` tool with `id` set to the skill name. Invoke `how` with `id: "how"`. Invoke `principle-laziness-protocol` with `id: "principle-laziness-protocol"`. Never open `skills/.../SKILL.md` with `read`, `glob`, or `grep`. That path bypasses registration and loads a stale copy. The skill tool loads the live content. This rule covers all triggers and all playbooks.
+
+Remaining triggers (all via the skill tool):
 
 - Nontrivial change, architecture decision, or "are we sure?" → the **how** skill.
 - About to `question` on a "which approach", "how should I", or "what should this do" fork → classify it before you ask. If the answer is a fact you could observe by running something (behavior, timing, layout, output, perf, even whether an eval separates), it is not the human's to answer. Sketch it via the Prototype playbook (`playbooks/prototype.md`) and let the result decide. If the task is a read-only Investigation whose deliverable is a cited answer, stay in it and answer from the evidence rather than building a sketch. Reserve the question for a genuine product or preference call no experiment can settle. The ask is the slow path. A throwaway probe usually answers faster, and it hands the human a result to react to instead of a decision to make.
@@ -22,7 +26,7 @@ Remaining triggers:
 - Docs, RFCs, readmes, PR descriptions, or commit messages → load the technical-writing skill via the skill tool.
 - Before commit → load the deslop skill via the skill tool to clean the diff.
 - Before review → load the no-comments skill via the skill tool.
-- Shipping UI / IDE / CLI → load the matching control skill from this package. control-cli drives CLIs and TUIs. control-ui drives browser, Electron, and web UIs. For bug fixes, reproduce first on the same surface yourself; hand to the user only under the narrow Bug fix step 1 exception.
+- Shipping UI / IDE / CLI → load the matching control skill via the skill tool from this package. control-cli drives CLIs and TUIs. control-ui drives browser, Electron, and web UIs. For bug fixes, reproduce first on the same surface yourself; hand to the user only under the narrow Bug fix step 1 exception.
 - Any PR-status request → the **Babysit** playbook (`playbooks/babysit.md`). That includes "babysit this", "get it green", and the commonest phrasing, "check on PR X" / "anything outstanding on X". Never triggered by merely opening a PR. Declare its mode before polling; the playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
 - Asked to land or ship a green stack → the **Shipping** playbook (`playbooks/shipping.md`). Green is not safe. Nothing gets merged before an independent per-PR verdict, and only the contiguous verified run from the root lands.
 - Review bot commented → skeptical posture. Review bots catch real bugs and also file non-issues and nitpicks, so assess each on its merits and dismiss noise with a concrete reason instead of churning code.
@@ -31,7 +35,7 @@ Remaining triggers:
 
 ## Principles
 
-Read the leaf skill in full for any principle you apply. Each entry names when it applies.
+Invoke the leaf skill via the skill tool in full for any principle you apply. Each entry names when it applies.
 
 **Core**
 

@@ -1,5 +1,7 @@
 ### Eval
 
+Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
+
 **You own the experiment design. Plan, blind, run, synthesize.**
 
 Evals test how a change affects agent behavior before promoting it: a new skill variant, a structural change, a prompt tweak. The failure mode is the observer effect. An agent that knows it's being evaluated behaves differently, so candidates must run blind.
@@ -21,7 +23,7 @@ Evals test how a change affects agent behavior before promoting it: a new skill 
 3. **Author one organic prompt.** What a user would type. No leakage of what's being measured.
 4. **Spawn N parallel candidates** on the inherited parent model per the **arena** skill's Phase B. Each works in its own sanitized dir; same prompt to each.
 5. **Spawn one blinded judge** on the inherited parent model per the **arena** skill's Phase C. Judge sees outputs by sanitized label and the rubric.
-6. **Verify the chain from session history, not self-report.** Read each candidate's session messages via the opencode session API in its own working dir. Do not read session storage from unrelated projects. Look at which files each candidate actually opened. Citing a principle is not reading its leaf skill, and reading it is not applying it. Grade chain-following from the files it really read plus the shape of the code, never from the candidate's own claims.
+6. **Verify the chain from session history, not self-report.** Read each candidate's session messages via the opencode session API in its own working dir. Do not read session storage from unrelated projects. Look at which skills each candidate actually invoked via the skill tool. Citing a principle is not invoking its leaf skill via the skill tool, and invoking it is not applying it. Grade chain-following from the skills it really invoked plus the shape of the code, never from the candidate's own claims.
 7. **Read every candidate output yourself** end to end. Compare to the judge's verdict. Disagreement means a model is biased or the rubric is ambiguous. Synthesize.
 
 **Reply:** variant under test, rubric, per-candidate notes, judge's verdict, your synthesis, and a recommendation for whether to promote the variant.

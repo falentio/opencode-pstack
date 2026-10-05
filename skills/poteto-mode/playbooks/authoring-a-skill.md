@@ -1,5 +1,7 @@
 ### Authoring or modifying a skill
 
+Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
+
 **You own the skill's voice.** Agent-facing prose has a higher bar than human prose; unhelpful sentences become instructions.
 
 1. Use the **writing-great-skills** and **writing-for-agents** skills for authoring SKILL.md files.

@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # No comments
 
+Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
+
 Spawn Comment Sicko. Act on accepted findings.
 
 Authoring agents defend comments. Defer to Comment Sicko's fresh perspective.
