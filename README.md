@@ -109,10 +109,9 @@ and the verify-pstack live drive. It has no tool home.
   This port therefore omits `Task.model` everywhere and runs every subagent on
   the parent chat model. The skills retain parallelism and independent review,
   but cannot provide Cursor's model diversity.
-- Four skills are opencode-native additions with no Cursor counterpart in pstack:
-  `deslop` (diff cleanup before commit), `control-ui` and `control-cli`
-  (drive the real UI or CLI and capture evidence), and `using-git-worktrees`
-  (isolated workspaces via native tools or git worktree fallback).
+- Three skills are opencode-native additions with no Cursor counterpart in pstack:
+  `deslop` (diff cleanup before commit), `control-ui`, and `control-cli`
+  (drive the real UI or CLI and capture evidence).
 - Stacking uses plain `git` branches plus `gh` (`gh pr create`, `gh pr edit
   --base`, bottom-up `gh` merges). There is no `gt` CLI and no Graphite UI,
   merge-when-ready, or `graphite-base` refs. Loops use background Tasks with
