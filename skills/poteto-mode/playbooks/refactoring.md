@@ -1,7 +1,5 @@
 ### Refactoring
 
-Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
-
 **You own the contract. The structure changes; the behavior does not.** For "refactor", "rename", "extract", "inline", "dedupe", "restructure", "move this module", "tidy up this area". Distinct from Feature, which adds behavior, and Bug fix, which corrects it.
 
 A refactor that smuggles in a behavior change loses its safety net. If the cleanup reveals a missing feature or a real bug, split it out and ship the structural change first against the pinned contract. A redesign is allowed, but name it and route to Feature. Large or cross-cutting structural work (a migration across many call sites, a coordinated reshape of many subsystems) belongs to the **figure-it-out** skill; this playbook is the focused-to-medium change.

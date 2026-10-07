@@ -1,7 +1,5 @@
 ### Autopilot-stack
 
-Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
-
 **You own the stack, never the landing. Build and verify the queue with full autonomy, then hand the operator one linear stack she reviews and lands herself.** For "autopilot-stack", "stack them, don't ship", "build the stack, I'll land it". The sibling of **Autopilot-full**. The owner loop and the verification gate are the same; only the terminal differs. There a clean verdict authorizes the owner's merge. Here it appends a link to the one reviewed chain, and nothing auto-ships.
 
 1. **Run the owner loop unchanged.** One OpenCode subagent per PR owns its change end to end: build, `gh pr create` for its own PR, self-proof (gates, CI, receipts), the no-comments skill, and babysit to green per `playbooks/babysit.md`. Owners parallelize when the work is self-contained. Every owner keeps a `decisions.tsv` trail per the **show-me-your-work** skill, never committed, returned in its report.

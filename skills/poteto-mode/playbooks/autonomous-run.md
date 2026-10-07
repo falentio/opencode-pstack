@@ -1,7 +1,5 @@
 ### Autonomous run
 
-Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
-
 **You own the exit condition. Define done, then drive to it without stopping.** For "going to bed" / "run until done" / "loop until X via the autonomous-run playbook".
 
 1. State the exit condition as a checkable predicate before the first iteration (tests green, repro fixed, all N PRs merged, pixel-diff zero). A vague goal stalls; a predicate lets you stop.

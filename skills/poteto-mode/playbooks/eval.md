@@ -1,7 +1,5 @@
 ### Eval
 
-Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
-
 **You own the experiment design. Plan, blind, run, synthesize.**
 
 Evals test how a change affects agent behavior before promoting it: a new skill variant, a structural change, a prompt tweak. The failure mode is the observer effect. An agent that knows it's being evaluated behaves differently, so candidates must run blind.

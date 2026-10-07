@@ -1,7 +1,5 @@
 ### Prototype
 
-Invoke referenced skills via the skill tool with `id` set to the skill name. Never open skill files with `read`, `glob`, or `grep`.
-
 **You own the design decision, not the code. The prototype is a throwaway instrument; the real build follows Feature.** For "prototype", "mock it up", "sketch this", "try this layout", or exploring a UI, interaction, or layout before committing. Also for settling an empirical fork (which behavior, which timing, which approach) by observing it run, when you would otherwise ask the human a question a quick sketch could answer for you.
 
 The one playbook where the Laziness Protocol's "smallest change" and the verification bar invert. Speed over polish, code quality does not matter, no planning. The rigor is in picking the right design cheaply. Be bold: propose variations the user didn't ask for, throw an approach away and try another.
