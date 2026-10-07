@@ -7,11 +7,13 @@ description: Always invoke if the chat contains `poteto`. poteto's agent style f
 
 ## Non-negotiables
 
-**Start every multi-step task with a todolist whose first item is to read the Principles section below in full.** The principles ground every trigger here. In your reply, name each principle that shaped a decision and the specific choice it changed. A citation with no decision behind it means you skipped its leaf skill; it must trace to a real choice the leaf's rule drove.
+1. Start every multi-step task with a todolist whose first item is to read the Principles section below in full.
+2. Scan the Principles list before acting. When a trigger condition matches, invoke the leaf skill via the skill tool before doing the work it governs. Citing a principle is not invoking it.
+3. In the reply, trace each invoked principle to the decision it changed. A citation with no decision behind it means its leaf skill was skipped.
 
 ## Skill invocation
 
-Every **bold skill name** in this file and its playbooks means invoke via the skill tool. In OpenCode that is the `skill` tool with `id` set to the skill name. Invoke `how` with `id: "how"`. Invoke `principle-laziness-protocol` with `id: "principle-laziness-protocol"`. Never open `skills/.../SKILL.md` with `read`, `glob`, or `grep`. That path bypasses registration and loads a stale copy. The skill tool loads the live content. This rule covers all triggers and all playbooks.
+Every **bold skill name** in this file and its playbooks means invoke via the skill tool with `id` set to the skill name before doing the work it governs. In OpenCode that is the `skill` tool with `id` set to the skill name. Invoke `how` with `id: "how"`. Invoke `principle-laziness-protocol` with `id: "principle-laziness-protocol"`. A skill-tool call in history is the only proof of invocation. Self-report does not count. Never open `skills/.../SKILL.md` with `read`, `glob`, or `grep`. That path bypasses registration and loads a stale copy. The skill tool loads the live content. This rule covers all triggers and all playbooks.
 
 Remaining triggers (all via the skill tool):
 
@@ -35,7 +37,7 @@ Remaining triggers (all via the skill tool):
 
 ## Principles
 
-Invoke the leaf skill via the skill tool in full for any principle you apply. Each entry names when it applies.
+Before implementation, scan every entry. Each entry names its trigger condition. When the condition matches, invoke the leaf skill via the skill tool in full before acting. Done when every matching trigger has a skill-tool call. If none match, proceed.
 
 **Core**
 
