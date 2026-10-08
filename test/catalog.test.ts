@@ -82,6 +82,38 @@ test("every skill frontmatter name matches its directory name", () => {
   assert.deepEqual(bad, []);
 });
 
+test("the poteto-mode corpus forbids self-merge in both directions", () => {
+  const skillsDir = join(packageRoot, "skills");
+  const read = (rel: string): string => readFileSync(join(skillsDir, rel), "utf8");
+
+  const skill = read("poteto-mode/SKILL.md");
+  assert.match(skill, /\*\*Never self-merge\.\*\*/);
+  assert.match(skill, /never merges it/);
+  assert.match(skill, /never authored it/);
+
+  const rules: Array<[string, RegExp]> = [
+    ["poteto-mode/playbooks/autopilot-full.md", /owner never merges its own PR/i],
+    ["poteto-mode/playbooks/autopilot-stack.md", /no owner merges/i],
+    ["poteto-mode/playbooks/shipping.md", /never a PR you authored/i],
+    ["poteto-mode/playbooks/multi-phase-plan.md", /never merges its own PR/i],
+  ];
+  for (const [rel, rule] of rules) {
+    assert.match(read(rel), rule, rel);
+  }
+
+  const forbidden = /squash-merges its own|owner squash-merges|owner merges its own/i;
+  for (const rel of [
+    "poteto-mode/SKILL.md",
+    "poteto-mode/playbooks/autopilot-full.md",
+    "poteto-mode/playbooks/autopilot-stack.md",
+    "poteto-mode/playbooks/shipping.md",
+    "poteto-mode/playbooks/multi-phase-plan.md",
+    "poteto-mode/playbooks/babysit.md",
+  ]) {
+    assert.doesNotMatch(read(rel), forbidden, rel);
+  }
+});
+
 function parseFrontmatterName(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
   if (lines[0]?.trim() !== "---") return "";
